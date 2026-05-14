@@ -1,0 +1,19 @@
+node_modules/
+.next/
+dist/
+build/
+.turbo/
+.env
+.env.local
+.env*.local
+.vercel/
+*.log
+.DS_Store
+.tsbuildinfo
+*.tsbuildinfo
+coverage/
+.pnpm-store/
+
+# Claude Code local settings (project-shared skills + backlog ARE committed)
+.claude/settings.local.json
+

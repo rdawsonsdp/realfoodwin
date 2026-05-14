@@ -1,0 +1,262 @@
+{
+  "_meta": {
+    "source": "Fabricated reasonable real-food content. Web access to realfoodwin.org was unavailable during this seeding pass (WebFetch/WebSearch/curl all blocked by permission policy). All entries below are marked fabricated:true and reflect plausible content for the Real Food Win catalog given the project spec (junk-food swap targets like Snickers, Doritos, Big Mac, Oreos; brands directory for real-food alternatives). Replace with scraped content from the live site when access is granted.",
+    "generated_at": "2026-05-14",
+    "generated_by": "Claude (Opus 4.7) bootstrap seed",
+    "intended_use": "Greenfield rebuild seed data for recipes + brands tables (see realfoodwinprojectspec.md section 5.1)"
+  },
+  "recipes": [
+    {
+      "title": "Homemade Snickers Bites",
+      "ingredients": [
+        "1 cup pitted Medjool dates (about 12), soaked in warm water 10 minutes then drained",
+        "1/2 cup natural peanut butter (just peanuts + salt)",
+        "1/2 cup raw peanuts, roughly chopped",
+        "1 tsp vanilla extract",
+        "1/4 tsp fine sea salt",
+        "1 cup dark chocolate chips (70% or higher)",
+        "1 tsp coconut oil",
+        "Flaky sea salt for finishing"
+      ],
+      "steps": [
+        "Line an 8x8 baking dish with parchment paper, leaving overhang on two sides.",
+        "Process the drained dates in a food processor until they form a thick, smooth paste, scraping down the sides as needed.",
+        "Add the peanut butter, vanilla, and fine sea salt to the date paste. Pulse until fully combined and the mixture pulls away from the sides.",
+        "Fold the chopped peanuts into the date-peanut mixture with a spatula.",
+        "Press the mixture firmly and evenly into the lined dish. Freeze for 20 minutes until firm.",
+        "Melt the chocolate chips and coconut oil together in 30-second microwave bursts, stirring between each, until smooth.",
+        "Lift the firmed slab out of the dish and cut into 16 squares.",
+        "Dip each square in the melted chocolate, letting excess drip off, and place on parchment.",
+        "Sprinkle each bite with flaky sea salt while the chocolate is still wet.",
+        "Refrigerate 15 minutes until the chocolate sets. Store in the fridge in an airtight container for up to 2 weeks."
+      ],
+      "time_min": 50,
+      "difficulty": "beginner",
+      "meal_type": "snack",
+      "tags": ["no-bake", "gluten-free", "dairy-free", "kid-friendly", "make-ahead", "snickers-swap"],
+      "source_url": "https://realfoodwin.org/swap/snickers",
+      "fabricated": true
+    },
+    {
+      "title": "Crispy Baked Real-Cheese Tortilla Chips",
+      "ingredients": [
+        "10 small corn tortillas (look for ingredients: corn, lime, water, salt)",
+        "3 tbsp avocado oil",
+        "1 tsp fine sea salt",
+        "1 tsp smoked paprika",
+        "1/2 tsp garlic powder",
+        "1/2 tsp onion powder",
+        "1/2 tsp ground cumin",
+        "1/4 tsp cayenne (optional)",
+        "1/2 cup finely grated aged cheddar (real cheese, not powder)",
+        "2 tbsp nutritional yeast"
+      ],
+      "steps": [
+        "Heat the oven to 400F (205C). Line two sheet pans with parchment.",
+        "Stack the tortillas and cut each into 6 wedges.",
+        "Toss the wedges in a large bowl with the avocado oil until evenly coated.",
+        "In a small bowl, whisk together the salt, smoked paprika, garlic powder, onion powder, cumin, and cayenne.",
+        "Sprinkle the spice blend over the oiled tortillas and toss again to coat.",
+        "Spread the chips in a single layer across the two sheet pans, not overlapping.",
+        "Bake for 8 minutes, then rotate the pans and bake 5-7 more minutes until deeply golden and crisp.",
+        "While the chips are hot, toss in a clean bowl with the grated cheddar and nutritional yeast so they melt and cling.",
+        "Cool 5 minutes before serving so the cheese sets onto the chips.",
+        "Store any leftovers in an airtight container at room temp for up to 4 days."
+      ],
+      "time_min": 25,
+      "difficulty": "beginner",
+      "meal_type": "snack",
+      "tags": ["gluten-free", "vegetarian", "kid-friendly", "quick", "doritos-swap"],
+      "source_url": "https://realfoodwin.org/swap/doritos",
+      "fabricated": true
+    },
+    {
+      "title": "Grass-Fed Smash Burgers with House Sauce",
+      "ingredients": [
+        "1 lb grass-fed ground beef (80/20)",
+        "1/2 tsp kosher salt",
+        "1/2 tsp freshly ground black pepper",
+        "4 slices sharp cheddar or American (from a real-food brand)",
+        "4 brioche or sourdough buns, split and toasted",
+        "1 small white onion, sliced paper-thin",
+        "8 slices dill pickle",
+        "1 cup shredded iceberg or romaine lettuce",
+        "3 tbsp avocado-oil mayonnaise",
+        "1 tbsp organic ketchup (no HFCS)",
+        "1 tbsp yellow mustard",
+        "1 tsp dill pickle brine",
+        "1/2 tsp smoked paprika",
+        "1 tbsp grass-fed butter or beef tallow for the pan"
+      ],
+      "steps": [
+        "Make the house sauce: whisk the mayo, ketchup, mustard, pickle brine, and smoked paprika in a small bowl. Refrigerate while you cook.",
+        "Divide the beef into 4 equal balls without overworking. Season the outside of each lightly with salt and pepper.",
+        "Heat a cast-iron skillet or griddle over high heat until smoking. Add the butter or tallow.",
+        "Place a beef ball in the pan and immediately smash flat with a heavy spatula or burger press until 1/4 inch thick. Repeat in batches; do not crowd the pan.",
+        "Cook 90 seconds without moving so a deep crust forms. Flip, top each patty with a slice of cheese, and cook 60 more seconds.",
+        "Toast the buns in the pan drippings for 30 seconds, cut-side down.",
+        "Spread house sauce on both halves of each bun. Build: bottom bun, lettuce, pickles, patty, thin onion, top bun.",
+        "Serve immediately while the patties are crackling hot."
+      ],
+      "time_min": 20,
+      "difficulty": "comfortable",
+      "meal_type": "dinner",
+      "tags": ["high-protein", "weeknight", "family-friendly", "big-mac-swap"],
+      "source_url": "https://realfoodwin.org/swap/big-mac",
+      "fabricated": true
+    },
+    {
+      "title": "Almond Flour Chocolate Sandwich Cookies",
+      "ingredients": [
+        "1 1/2 cups blanched almond flour",
+        "1/4 cup cocoa powder (unsweetened, Dutch-processed)",
+        "1/4 tsp fine sea salt",
+        "1/4 tsp baking soda",
+        "1/4 cup maple syrup",
+        "3 tbsp coconut oil, melted",
+        "1 tsp vanilla extract",
+        "1/2 cup powdered sugar (or coconut sugar blended fine)",
+        "3 tbsp grass-fed butter or palm shortening, softened",
+        "1 tbsp full-fat coconut milk or heavy cream",
+        "1/2 tsp vanilla extract (for filling)",
+        "Pinch of salt (for filling)"
+      ],
+      "steps": [
+        "Heat the oven to 350F (175C). Line a sheet pan with parchment.",
+        "In a bowl, whisk the almond flour, cocoa, salt, and baking soda.",
+        "In a second bowl, whisk the maple syrup, melted coconut oil, and vanilla until smooth.",
+        "Pour the wet into the dry and stir until a stiff dough forms. If sticky, chill 10 minutes.",
+        "Scoop teaspoons of dough and roll into 24 small balls. Flatten each to 1/4 inch on the sheet pan using the bottom of a glass.",
+        "Bake 8-10 minutes until set but still soft. Cool fully on the pan (they crisp as they cool).",
+        "Make the filling: beat the powdered sugar, butter, coconut milk, vanilla, and pinch of salt until fluffy and pipeable.",
+        "Match cookies into pairs by size. Pipe or spread a teaspoon of filling onto the flat side of one cookie and sandwich with its match.",
+        "Press gently. Let sit 10 minutes for the filling to firm up before serving.",
+        "Store in an airtight container at room temp 3 days, or refrigerate up to a week."
+      ],
+      "time_min": 40,
+      "difficulty": "comfortable",
+      "meal_type": "dessert",
+      "tags": ["gluten-free", "grain-free", "lower-sugar", "kid-friendly", "oreo-swap"],
+      "source_url": "https://realfoodwin.org/swap/oreos",
+      "fabricated": true
+    },
+    {
+      "title": "Five-Minute Overnight Oats with Real Berries",
+      "ingredients": [
+        "1/2 cup rolled oats (gluten-free if needed)",
+        "1/2 cup whole milk, oat milk, or almond milk",
+        "2 tbsp plain whole-milk Greek yogurt",
+        "1 tbsp chia seeds",
+        "1 tbsp pure maple syrup or raw honey",
+        "1/2 tsp vanilla extract",
+        "Pinch of cinnamon",
+        "Pinch of fine sea salt",
+        "1/3 cup mixed berries (fresh or frozen)",
+        "1 tbsp chopped pecans or almonds",
+        "1 tsp bee pollen or hemp hearts (optional)"
+      ],
+      "steps": [
+        "In a half-pint jar or sealable container, add the oats, milk, yogurt, chia, maple syrup, vanilla, cinnamon, and salt.",
+        "Stir thoroughly so the chia seeds disperse and don't clump at the bottom.",
+        "Seal and refrigerate at least 6 hours, ideally overnight.",
+        "In the morning, give it a stir. If too thick, splash in a tablespoon more milk.",
+        "Top with the berries and nuts. Add bee pollen or hemp hearts if using.",
+        "Eat cold from the jar, or warm gently in a saucepan for a hot breakfast."
+      ],
+      "time_min": 5,
+      "difficulty": "beginner",
+      "meal_type": "breakfast",
+      "tags": ["high-fiber", "make-ahead", "no-cook", "vegetarian", "kid-friendly", "pop-tart-swap"],
+      "source_url": "https://realfoodwin.org/swap/pop-tarts",
+      "fabricated": true
+    },
+    {
+      "title": "Real-Ingredient Chicken Tenders with Honey Mustard",
+      "ingredients": [
+        "1 1/4 lb boneless skinless chicken tenders or breast strips",
+        "1/2 cup whole milk or buttermilk",
+        "1 tsp Dijon mustard",
+        "1 1/2 cups panko breadcrumbs (or crushed pork rinds for grain-free)",
+        "1/2 cup finely grated parmesan",
+        "1 tsp garlic powder",
+        "1 tsp paprika",
+        "1/2 tsp onion powder",
+        "3/4 tsp fine sea salt",
+        "1/2 tsp black pepper",
+        "1/2 cup all-purpose flour (or cassava flour)",
+        "2 large eggs, beaten",
+        "3 tbsp avocado oil for drizzling",
+        "1/4 cup raw honey (for sauce)",
+        "3 tbsp Dijon mustard (for sauce)",
+        "1 tbsp apple cider vinegar (for sauce)"
+      ],
+      "steps": [
+        "Soak the chicken in the milk + 1 tsp Dijon mixture for 15 minutes (or up to overnight) while you set up the breading station.",
+        "Heat the oven to 425F (220C). Place a wire rack on a sheet pan and lightly oil it.",
+        "Stir together the panko, parmesan, garlic powder, paprika, onion powder, salt, and pepper in a wide bowl.",
+        "Set up three stations: flour in one bowl, beaten eggs in a second, the seasoned panko in a third.",
+        "Lift each tender from the milk soak, dredge in flour, dip in egg, then press into the panko mixture so it sticks all over.",
+        "Place on the wire rack. Repeat with all tenders.",
+        "Drizzle the tops with avocado oil. Bake 18-22 minutes, flipping halfway, until deeply golden and cooked to 165F internal.",
+        "While they bake, whisk the honey, 3 tbsp Dijon, and apple cider vinegar in a small bowl for the dipping sauce.",
+        "Let the tenders rest 3 minutes, then serve hot with the honey mustard."
+      ],
+      "time_min": 35,
+      "difficulty": "comfortable",
+      "meal_type": "dinner",
+      "tags": ["high-protein", "kid-favorite", "weeknight", "baked-not-fried", "chicken-nugget-swap"],
+      "source_url": "https://realfoodwin.org/swap/chicken-nuggets",
+      "fabricated": true
+    }
+  ],
+  "brands": [
+    {
+      "name": "Simple Mills",
+      "category": "Crackers, cookies, baking mixes",
+      "description": "Almond-flour based crackers, cookies, and baking mixes with short, recognizable ingredient lists. A reliable swap for grocery-aisle ultra-processed snacks when home baking isn't an option.",
+      "certifications": ["Gluten-Free", "Non-GMO Project Verified"],
+      "source_url": "https://realfoodwin.org/brands/simple-mills",
+      "fabricated": true
+    },
+    {
+      "name": "Applegate",
+      "category": "Deli meats, hot dogs, breakfast sausage",
+      "description": "Humanely raised meats with no antibiotics, no added nitrates or nitrites, and no artificial ingredients. Use them as 1:1 replacements for conventional deli and breakfast meats.",
+      "certifications": ["Certified Humane", "Non-GMO Project Verified", "Antibiotic-Free"],
+      "source_url": "https://realfoodwin.org/brands/applegate",
+      "fabricated": true
+    },
+    {
+      "name": "Kettle & Fire",
+      "category": "Bone broth, soups",
+      "description": "Slow-simmered bone broths made from grass-fed beef and organic chicken bones with vegetables and herbs. Shelf-stable cartons make it easy to keep real broth on hand for cooking and sipping.",
+      "certifications": ["Organic (chicken line)", "Grass-Fed", "Whole30 Approved"],
+      "source_url": "https://realfoodwin.org/brands/kettle-and-fire",
+      "fabricated": true
+    },
+    {
+      "name": "Siete Foods",
+      "category": "Tortillas, chips, salsas, taco shells",
+      "description": "Grain-free tortillas and chips made from cassava, almond flour, chickpea flour, and avocado oil. Family-founded, designed for households navigating gluten and grain sensitivities.",
+      "certifications": ["Gluten-Free", "Grain-Free", "Non-GMO Project Verified", "Paleo-Friendly"],
+      "source_url": "https://realfoodwin.org/brands/siete",
+      "fabricated": true
+    },
+    {
+      "name": "Maple Hill Creamery",
+      "category": "Dairy: milk, yogurt, kefir",
+      "description": "100% grass-fed organic dairy from small family farms in upstate New York. Higher omega-3 content than conventional dairy and produced without grain feed.",
+      "certifications": ["USDA Organic", "100% Grass-Fed", "Animal Welfare Approved"],
+      "source_url": "https://realfoodwin.org/brands/maple-hill",
+      "fabricated": true
+    },
+    {
+      "name": "Primal Kitchen",
+      "category": "Condiments, dressings, sauces",
+      "description": "Avocado-oil based mayo, ketchup, dressings, and BBQ sauces with no canola, soybean, or sugar fillers. The fastest way to replace seed-oil and HFCS-heavy condiments in a pantry overhaul.",
+      "certifications": ["Whole30 Approved", "Paleo-Friendly", "Keto-Friendly", "Gluten-Free"],
+      "source_url": "https://realfoodwin.org/brands/primal-kitchen",
+      "fabricated": true
+    }
+  ]
+}

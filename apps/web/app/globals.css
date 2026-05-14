@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-jakarta: "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+
+  html {
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans;
+    background-image:
+      radial-gradient(at 80% -10%, rgba(255, 213, 107, 0.35) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(243, 155, 71, 0.18) 0px, transparent 60%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4 {
+    @apply text-ink tracking-tight;
+    font-feature-settings: "ss01" on;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-pill bg-sunrise px-6 py-3 text-base font-semibold text-white shadow-warm transition-all hover:bg-sunrise-600 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-pill bg-white px-6 py-3 text-base font-semibold text-ink ring-1 ring-ink/10 shadow-card transition-all hover:ring-ink/20 active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-pill px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-ink hover:bg-honey/40;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-pill bg-cream px-3 py-1.5 text-sm font-medium text-ink-soft ring-1 ring-sunrise/20 transition-colors hover:bg-honey hover:text-ink;
+  }
+
+  .card {
+    @apply rounded-soft bg-white shadow-card ring-1 ring-ink/5;
+  }
+
+  .badge-tuned {
+    @apply inline-flex items-center gap-1.5 rounded-pill bg-sunrise/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-sunrise-700 ring-1 ring-sunrise/30;
+  }
+}
