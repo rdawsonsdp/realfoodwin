@@ -3,9 +3,12 @@ import { AnthropicCallError } from "../errors";
 
 export type ModelTier = "sonnet" | "haiku";
 
+// Aliases stay on the latest stable revision for the account's tier. If your
+// API key lacks access to a specific model, Anthropic returns 404 not_found
+// — bump these to the previous date-suffixed ID and redeploy.
 export const MODELS: Record<ModelTier, string> = {
-  sonnet: "claude-sonnet-4-6",
-  haiku: "claude-haiku-4-5-20251001",
+  sonnet: "claude-sonnet-4-5",
+  haiku: "claude-haiku-4-5",
 };
 
 // USD per 1M tokens — directional, revise when prices change.
