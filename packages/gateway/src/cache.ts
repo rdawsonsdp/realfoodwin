@@ -1,12 +1,14 @@
-import { getServiceSupabase } from "./supabase.js";
+import { getServiceSupabase } from "./supabase";
 
 export interface CachedSwap {
   id: string;
   user_id: string | null;
-  product_id: string;
+  product_id: string | null;
   recipe: unknown;
   nutrition: unknown;
   narrative: string;
+  output: unknown;
+  swap_target: string | null;
   created_at: string;
 }
 
@@ -32,6 +34,8 @@ export interface CacheSwapInput {
   recipe: unknown;
   nutrition: unknown;
   narrative: string;
+  output?: unknown;
+  swap_target?: string | null;
   base_swap_id?: string | null;
 }
 
@@ -45,6 +49,8 @@ export async function cacheSwap(input: CacheSwapInput): Promise<CachedSwap> {
       recipe: input.recipe,
       nutrition: input.nutrition,
       narrative: input.narrative,
+      output: input.output ?? null,
+      swap_target: input.swap_target ?? null,
       base_swap_id: input.base_swap_id ?? null,
     })
     .select()

@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiPost } from "@/lib/api";
 import { SwapResultCard, type SwapResult } from "./SwapResultCard";
+import { CookingAnimation } from "./CookingAnimation";
+import { VoiceButton } from "./VoiceButton";
+import { CuisineChips } from "./CuisineChips";
+import { DismissSurvey } from "./DismissSurvey";
 
 const EXAMPLES = ["Snickers", "Doritos", "Oreos", "Big Mac", "Pop-Tarts"];
 
@@ -12,7 +16,8 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SwapResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const [showDismiss, setShowDismiss] = useState(false);
+  const searchParams = useSearchParams();
 
   async function runSwap(q: string) {
     setLoading(true);
@@ -26,10 +31,6 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
         latency_ms: number | null;
       }>("/api/swap", { query: q });
 
-      if (data.swap?.id && isLoggedIn) {
-        router.push(`/swap/${data.swap.id}`);
-        return;
-      }
       setResult({
         query: q,
         output: data.output,
@@ -44,6 +45,18 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
     }
   }
 
+  // Auto-run when the URL carries ?q= — used to resume after the sign-in + quiz
+  // detour so the "Save → sign in → quiz → personalized swap" loop completes
+  // without the user retyping.
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q && q.length >= 2 && !result && !loading) {
+      setQuery(q);
+      void runSwap(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (query.trim().length < 2) return;
@@ -54,15 +67,24 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
     return (
       <div className="space-y-6">
         <button
-          onClick={() => {
-            setResult(null);
-            setQuery("");
-          }}
+          onClick={() => setShowDismiss(true)}
           className="btn-ghost"
         >
           ← Try another
         </button>
-        <SwapResultCard result={result} isLoggedIn={isLoggedIn} />
+        {showDismiss ? (
+          <DismissSurvey
+            swapId={result.swapId}
+            query={result.query}
+            onDone={() => {
+              setShowDismiss(false);
+              setResult(null);
+              setQuery("");
+            }}
+          />
+        ) : (
+          <SwapResultCard result={result} isLoggedIn={isLoggedIn} />
+        )}
       </div>
     );
   }
@@ -85,11 +107,20 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
         <div className="card p-2 flex items-center gap-2 shadow-warm">
           <input
             type="text"
-            placeholder="Try 'Snickers' or 'Doritos'…"
+            placeholder="Type or say 'Snickers'…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             disabled={loading}
             className="flex-1 px-5 py-4 bg-transparent outline-none text-lg placeholder:text-ink-muted"
+          />
+          <VoiceButton
+            disabled={loading}
+            onTranscript={(text, isFinal) => {
+              setQuery(text);
+              if (isFinal && text.trim().length >= 2) {
+                void runSwap(text.trim());
+              }
+            }}
           />
           <button
             type="submit"
@@ -116,6 +147,15 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
             </button>
           ))}
         </div>
+
+        {isLoggedIn && (
+          <CuisineChips
+            onPick={(q) => {
+              setQuery(q);
+              void runSwap(q);
+            }}
+          />
+        )}
       </form>
 
       {error && (
@@ -124,18 +164,7 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
         </div>
       )}
 
-      {loading && (
-        <div className="max-w-2xl mx-auto card p-8 animate-fade-up">
-          <div className="space-y-3">
-            <div className="h-4 bg-honey/40 rounded animate-shimmer bg-gradient-to-r from-honey/30 via-cream to-honey/30 bg-[length:200%_100%]" />
-            <div className="h-4 bg-honey/40 rounded animate-shimmer bg-gradient-to-r from-honey/30 via-cream to-honey/30 bg-[length:200%_100%] w-3/4" />
-            <div className="h-4 bg-honey/40 rounded animate-shimmer bg-gradient-to-r from-honey/30 via-cream to-honey/30 bg-[length:200%_100%] w-5/6" />
-          </div>
-          <p className="text-sm text-ink-muted mt-6 italic">
-            Asking our food coach for the best real-food version…
-          </p>
-        </div>
-      )}
+      {loading && <CookingAnimation />}
     </div>
   );
 }

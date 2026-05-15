@@ -1,4 +1,4 @@
-import { VoyageCallError } from "../errors.js";
+import { VoyageCallError } from "../errors";
 
 const VOYAGE_URL = "https://api.voyageai.com/v1/embeddings";
 const VOYAGE_MODEL = "voyage-3";

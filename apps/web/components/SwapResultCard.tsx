@@ -4,6 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
 import { IterationRow } from "./IterationRow";
+import { ListenButton } from "./ListenButton";
+import { StarRating } from "./StarRating";
+import { FoodConfetti } from "./FoodConfetti";
 
 export interface SwapResult {
   query: string;
@@ -48,6 +51,7 @@ export function SwapResultCard({
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
   const [currentOutput, setCurrentOutput] = useState(result.output);
 
   if (!currentOutput) {
@@ -65,6 +69,7 @@ export function SwapResultCard({
     try {
       await apiPost("/api/kitchen", { swap_id: result.swapId });
       setSaved(true);
+      setCelebrate(true);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
@@ -73,9 +78,18 @@ export function SwapResultCard({
     }
   }
 
+  const reasonsCount = currentOutput.tuned_for_you_reasons.length;
+  const concernCount = currentOutput.ingredient_analysis?.length ?? 0;
+  const ingCount = currentOutput.recipe.ingredients.length;
+  const stepCount = currentOutput.recipe.steps.length;
+  const nutritionKeys = currentOutput.nutrition
+    ? Object.entries(currentOutput.nutrition).filter(([, v]) => v != null).length
+    : 0;
+
   return (
     <article className="card overflow-hidden animate-fade-up">
-      <div className="p-8 pb-4 bg-gradient-to-br from-honey/30 via-cream to-paper">
+      {/* Hero — the only thing visible until the user starts unfolding */}
+      <header className="p-8 bg-gradient-to-br from-honey/30 via-cream to-paper">
         <div className="flex items-center justify-between mb-4">
           <span className="badge-tuned">Tuned for you</span>
           {result.latencyMs && (
@@ -87,18 +101,54 @@ export function SwapResultCard({
         <p className="text-sm text-ink-soft mb-2">
           Real-food swap for <strong>{result.query}</strong>
         </p>
-        <h2 className="text-3xl font-bold tracking-tight">{currentOutput.title}</h2>
+        <h2 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight">
+          {currentOutput.title}
+        </h2>
         {currentOutput.tagline && (
-          <p className="text-lg text-ink-soft mt-2">{currentOutput.tagline}</p>
+          <p className="text-lg text-ink-soft mt-3">{currentOutput.tagline}</p>
         )}
+        <div className="mt-5 flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-ink-muted">
+            {currentOutput.recipe.time_min} min
+            {currentOutput.recipe.difficulty && ` · ${currentOutput.recipe.difficulty}`}
+            {currentOutput.recipe.meal_type && ` · ${currentOutput.recipe.meal_type}`}
+          </span>
+          <span className="text-ink-muted text-xs">·</span>
+          <ListenButton
+            text={`${currentOutput.title}. ${currentOutput.tagline ?? ""}. ${currentOutput.narrative}. ${
+              reasonsCount
+                ? "Tuned for you: " + currentOutput.tuned_for_you_reasons.join(". ")
+                : ""
+            }`}
+            label="Listen"
+          />
+        </div>
+      </header>
+
+      {/* Quick teaser — one line that hints there's more, encouraging the user to dig in */}
+      <div className="px-8 py-4 bg-white border-y border-ink/5">
+        <p className="text-sm text-ink-soft">
+          {reasonsCount > 0 ? (
+            <>
+              <span className="text-sunrise font-semibold">↓ Tap below</span> to see the {reasonsCount}{" "}
+              {reasonsCount === 1 ? "reason" : "reasons"} this fits you, the recipe, and what's wrong with the original.
+            </>
+          ) : (
+            <>
+              <span className="text-sunrise font-semibold">↓ Tap below</span> to see the recipe and what's wrong with the original.
+            </>
+          )}
+        </p>
       </div>
 
-      <div className="px-8 py-6 space-y-6">
-        {currentOutput.tuned_for_you_reasons.length > 0 && (
-          <section>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-sunrise-700 mb-3">
-              Why this for you
-            </h3>
+      {/* Disclosure stack — each section opens independently */}
+      <div className="divide-y divide-ink/5">
+        {reasonsCount > 0 && (
+          <Disclosure
+            title="Why this for you"
+            count={`${reasonsCount} ${reasonsCount === 1 ? "reason" : "reasons"}`}
+            accent="bg-sunrise/10 text-sunrise-700"
+          >
             <ul className="space-y-2">
               {currentOutput.tuned_for_you_reasons.map((r, i) => (
                 <li key={i} className="flex gap-2 text-ink-soft">
@@ -107,23 +157,25 @@ export function SwapResultCard({
                 </li>
               ))}
             </ul>
-          </section>
+          </Disclosure>
         )}
 
-        <section>
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-sunrise-700 mb-3">
-            Why this is better
-          </h3>
+        <Disclosure
+          title="Why this is better"
+          count="The narrative"
+          accent="bg-sage-soft text-ink"
+        >
           <p className="text-ink-soft leading-relaxed">{currentOutput.narrative}</p>
-        </section>
+        </Disclosure>
 
-        {currentOutput.ingredient_analysis && currentOutput.ingredient_analysis.length > 0 && (
-          <section>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-sunrise-700 mb-3">
-              What's in the original
-            </h3>
+        {concernCount > 0 && (
+          <Disclosure
+            title="What's in the original"
+            count={`${concernCount} flagged ingredient${concernCount === 1 ? "" : "s"}`}
+            accent="bg-coral-soft text-ink"
+          >
             <div className="space-y-2">
-              {currentOutput.ingredient_analysis.map((ia, i) => (
+              {currentOutput.ingredient_analysis!.map((ia, i) => (
                 <div key={i} className="flex items-start gap-3 p-3 rounded-soft bg-paper">
                   <span
                     className={`text-xs font-semibold px-2 py-1 rounded-pill flex-shrink-0 ${
@@ -139,26 +191,24 @@ export function SwapResultCard({
                 </div>
               ))}
             </div>
-          </section>
+          </Disclosure>
         )}
 
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-sunrise-700">
-              The recipe
-            </h3>
-            <span className="text-sm text-ink-muted">
-              {currentOutput.recipe.time_min} min
-              {currentOutput.recipe.difficulty && ` · ${currentOutput.recipe.difficulty}`}
-            </span>
-          </div>
+        <Disclosure
+          title="The recipe"
+          count={`${ingCount} ingredients · ${stepCount} steps`}
+          accent="bg-honey/40 text-ink"
+        >
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <h4 className="text-sm font-semibold mb-2">Ingredients</h4>
               <ul className="space-y-1 text-ink-soft">
                 {currentOutput.recipe.ingredients.map((ing, i) => (
                   <li key={i} className="text-sm">
-                    <strong className="text-ink">{ing.quantity}{ing.unit ? ` ${ing.unit}` : ""}</strong>{" "}
+                    <strong className="text-ink">
+                      {ing.quantity}
+                      {ing.unit ? ` ${ing.unit}` : ""}
+                    </strong>{" "}
                     {ing.name}
                   </li>
                 ))}
@@ -173,43 +223,73 @@ export function SwapResultCard({
               </ol>
             </div>
           </div>
-        </section>
+        </Disclosure>
 
-        {currentOutput.nutrition && Object.keys(currentOutput.nutrition).length > 0 && (
-          <section>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-sunrise-700 mb-3">
-              Nutrition (per serving)
-            </h3>
+        {nutritionKeys > 0 && (
+          <Disclosure
+            title="Nutrition"
+            count={`${nutritionKeys} measure${nutritionKeys === 1 ? "" : "s"} per serving`}
+            accent="bg-paper text-ink"
+          >
             <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-              {Object.entries(currentOutput.nutrition).map(([k, v]) =>
+              {Object.entries(currentOutput.nutrition!).map(([k, v]) =>
                 v == null ? null : (
                   <div key={k} className="p-3 rounded-soft bg-paper text-center">
                     <div className="text-xl font-bold text-ink">{v}</div>
                     <div className="text-xs uppercase tracking-wider text-ink-muted">
-                      {k.replace(/_/g, " ").replace(/g$/, "g").replace(/mg$/, "mg")}
+                      {k.replace(/_/g, " ")}
                     </div>
                   </div>
                 ),
               )}
             </div>
-          </section>
+          </Disclosure>
         )}
 
         {isLoggedIn && result.swapId && (
-          <IterationRow
-            parentRecipe={currentOutput.recipe}
-            parentRecipeId={null}
-            onIterated={(out) => {
-              if (out)
-                setCurrentOutput({
-                  ...currentOutput,
-                  title: out.title,
-                  recipe: out.recipe,
-                });
-            }}
-          />
+          <Disclosure
+            title="Tweak this"
+            count="Make it dairy-free, scale to 6, or freehand"
+            accent="bg-sunrise/10 text-sunrise-700"
+          >
+            <IterationRow
+              parentRecipe={currentOutput.recipe}
+              parentRecipeId={null}
+              onIterated={(out) => {
+                if (out)
+                  setCurrentOutput({
+                    ...currentOutput,
+                    title: out.title,
+                    recipe: out.recipe,
+                  });
+              }}
+            />
+          </Disclosure>
         )}
       </div>
+
+      {/* Always-visible: rating + save */}
+      {result.swapId && (
+        <div className="px-8 py-5 bg-paper/40 border-t border-ink/5">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-xs uppercase tracking-[0.15em] text-sunrise-700 font-semibold mb-1">
+                Rate this swap
+              </p>
+              <p className="text-sm text-ink-muted">
+                Your ratings teach the coach your palate.
+              </p>
+            </div>
+            <StarRating
+              targetType="swap"
+              targetId={result.swapId}
+              targetLabel={`${result.query} swap → ${currentOutput.title}`}
+              size="lg"
+              isLoggedIn={isLoggedIn}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="p-6 bg-paper border-t border-ink/5">
         {saved ? (
@@ -222,6 +302,49 @@ export function SwapResultCard({
           </button>
         )}
       </div>
+
+      <FoodConfetti active={celebrate} onDone={() => setCelebrate(false)} />
     </article>
+  );
+}
+
+// Native <details> based disclosure with a styled summary row + chevron.
+// Keeps each section accessible (keyboard, screen reader) and animates open.
+function Disclosure({
+  title,
+  count,
+  accent,
+  children,
+}: {
+  title: string;
+  count: string;
+  accent: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group">
+      <summary className="flex items-center gap-3 px-8 py-4 cursor-pointer hover:bg-paper/60 transition-colors list-none [&::-webkit-details-marker]:hidden">
+        <span
+          className={`text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-pill flex-shrink-0 ${accent}`}
+        >
+          {title}
+        </span>
+        <span className="text-sm text-ink-muted flex-1 truncate">{count}</span>
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="text-ink-muted group-open:rotate-180 transition-transform flex-shrink-0"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </summary>
+      <div className="px-8 pb-6 pt-1 animate-fade-up">{children}</div>
+    </details>
   );
 }

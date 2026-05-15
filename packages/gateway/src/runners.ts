@@ -3,12 +3,12 @@ import {
   RecipeIterator,
   QuizSummary,
 } from "@realfoodwin/agents";
-import { callWithTool, callText } from "./llm/anthropic.js";
-import { embed } from "./llm/voyage.js";
-import { loadUserContext, composePromptBlocks } from "./context.js";
-import { logAgentCall, calculateCost } from "./logging.js";
-import { cacheSwap, getCachedSwap } from "./cache.js";
-import { SchemaValidationError } from "./errors.js";
+import { callWithTool, callText } from "./llm/anthropic";
+import { embed } from "./llm/voyage";
+import { loadUserContext, composePromptBlocks } from "./context";
+import { logAgentCall, calculateCost } from "./logging";
+import { cacheSwap, getCachedSwap } from "./cache";
+import { SchemaValidationError } from "./errors";
 
 export type ClientPlatform = "ios" | "android" | "web";
 
@@ -54,15 +54,18 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
       throw new SchemaValidationError("Swap output failed schema", parsed.error.format());
     }
 
-    // Cache + log
+    // Persist a swap row for any logged-in user so Save / Iterate / Kitchen can
+    // reference it. product_id may be null for text-search queries — that's fine.
     let saved = null;
-    if (input.userId && input.productId) {
+    if (input.userId) {
       saved = await cacheSwap({
         user_id: input.userId,
-        product_id: input.productId,
+        product_id: input.productId ?? null,
         recipe: parsed.data.recipe,
         nutrition: parsed.data.nutrition ?? {},
         narrative: parsed.data.narrative,
+        output: parsed.data,
+        swap_target: input.request,
       });
     }
 

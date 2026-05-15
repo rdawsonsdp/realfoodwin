@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { AnthropicCallError } from "../errors.js";
+import { AnthropicCallError } from "../errors";
 
 export type ModelTier = "sonnet" | "haiku";
 

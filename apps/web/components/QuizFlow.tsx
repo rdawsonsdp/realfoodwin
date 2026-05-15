@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 const DIETARY = [
   { value: "none", label: "None — I eat everything" },
@@ -37,6 +37,7 @@ const GOALS = [
 ];
 
 interface Answers {
+  display_name: string;
   dietary_pattern: string[];
   allergies: string[];
   allergies_other: string;
@@ -49,9 +50,10 @@ interface Answers {
 
 export function QuizFlow({ nextRoute }: { nextRoute: string }) {
   const router = useRouter();
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStep] = useState<Step>(0);
   const [submitting, setSubmitting] = useState(false);
   const [a, setA] = useState<Answers>({
+    display_name: "",
     dietary_pattern: [],
     allergies: [],
     allergies_other: "",
@@ -70,6 +72,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
     setSubmitting(true);
     try {
       await apiPost("/api/quiz/submit", {
+        display_name: a.display_name.trim() || null,
         dietary_pattern: a.dietary_pattern,
         allergies: a.allergies,
         allergies_other: a.allergies_other || null,
@@ -90,15 +93,41 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
   return (
     <div className="max-w-xl mx-auto space-y-8">
       <div className="flex gap-2 justify-center">
-        {[1, 2, 3, 4, 5].map((n) => (
+        {[0, 1, 2, 3, 4, 5].map((n) => (
           <div
             key={n}
-            className={`h-1.5 w-12 rounded-pill transition-colors ${
+            className={`h-1.5 w-10 rounded-pill transition-colors ${
               n <= step ? "bg-sunrise" : "bg-ink/10"
             }`}
           />
         ))}
       </div>
+
+      {step === 0 && (
+        <div className="space-y-6 animate-fade-up">
+          <div>
+            <p className="text-sm text-ink-muted">First things first 👋</p>
+            <h2 className="text-3xl font-bold tracking-tight">What should I call you?</h2>
+            <p className="text-ink-soft mt-2">Just your first name. I'll use it everywhere.</p>
+          </div>
+          <input
+            value={a.display_name}
+            onChange={(e) => setA({ ...a, display_name: e.target.value })}
+            placeholder="Robert"
+            autoFocus
+            className="w-full p-4 text-lg rounded-soft bg-white border border-ink/10 outline-none focus:border-sunrise"
+          />
+          <div className="flex justify-end">
+            <button
+              onClick={() => setStep(1)}
+              disabled={a.display_name.trim().length < 1}
+              className="btn-primary disabled:opacity-50"
+            >
+              Continue →
+            </button>
+          </div>
+        </div>
+      )}
 
       {step === 1 && (
         <div className="space-y-6 animate-fade-up">
@@ -122,7 +151,8 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
               </button>
             ))}
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-between">
+            <button onClick={() => setStep(0)} className="btn-ghost">← Back</button>
             <button onClick={() => setStep(2)} className="btn-primary">
               Continue →
             </button>

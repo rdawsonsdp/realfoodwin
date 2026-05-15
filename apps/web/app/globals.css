@@ -26,6 +26,31 @@
   }
 }
 
+@media print {
+  /* Print-clean: hide chrome, force white background, keep ingredients + method readable. */
+  body {
+    background: white !important;
+    background-image: none !important;
+  }
+  header, nav, footer, .print\:hidden {
+    display: none !important;
+  }
+  .card {
+    box-shadow: none !important;
+    border: none !important;
+  }
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+  ol, ul {
+    page-break-inside: avoid;
+  }
+  li {
+    page-break-inside: avoid;
+  }
+}
+
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-pill bg-sunrise px-6 py-3 text-base font-semibold text-white shadow-warm transition-all hover:bg-sunrise-600 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;

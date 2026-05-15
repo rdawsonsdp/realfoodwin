@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 // Matches the 5-question quiz (spec 4.1) with snake_case wire format.
 const RequestSchema = z.object({
+  display_name: z.string().min(1).max(80).nullable().optional(),
   dietary_pattern: z.array(z.string()),
   allergies: z.array(z.string()),
   allergies_other: z.string().nullable().optional(),
@@ -52,6 +53,14 @@ export async function POST(req: Request) {
   }
 
   const profile = parsed.data;
+
+  // 0. Update display_name on public.users if provided.
+  if (profile.display_name) {
+    await supabase
+      .from("users")
+      .update({ display_name: profile.display_name })
+      .eq("id", user.id);
+  }
 
   // 1. Upsert the profile.
   const { error: profileErr } = await supabase.from("user_profiles").upsert(

@@ -1,5 +1,5 @@
-import { getServiceSupabase } from "./supabase.js";
-import { PRICING, type ModelTier } from "./llm/anthropic.js";
+import { getServiceSupabase } from "./supabase";
+import { PRICING, type ModelTier } from "./llm/anthropic";
 
 export function calculateCost(
   tier: ModelTier,

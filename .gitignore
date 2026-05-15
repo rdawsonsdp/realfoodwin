@@ -6,6 +6,8 @@ build/
 .env
 .env.local
 .env*.local
+.env.vercel
+.env.production
 .vercel/
 *.log
 .DS_Store

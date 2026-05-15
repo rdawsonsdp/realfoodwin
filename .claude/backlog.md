@@ -28,6 +28,10 @@ Deferred items from the planning Q&A on 2026-05-14. Revisit when the relevant ph
 - Mobile waitlist email migration script — export → `mobile_app_waitlist` table → Resend launch announcement
 - Replit sunset plan
 
+## AI tuning features — deferred
+
+- **AI self-tuning questions** (added 2026-05-14) — Have Haiku analyze each user's recent swap+rating+dismiss history and generate 1–3 clarifying questions for the admin to answer ("Linda dismisses pasta swaps citing 'too time-consuming' but saves 30-min Italian dinners — should I assume she only wants pasta when it's truly quick?"). Admin answers go into `<admin_coaching_notes>` for that user. Needs: a `tuning_questions` table, a Haiku prompt template, a queue/review surface in /admin.
+
 ## Product decisions still open
 
 - Anonymous rate-limit counting mechanism (IP / cookie / fingerprint mix) when re-enabled post-prototype

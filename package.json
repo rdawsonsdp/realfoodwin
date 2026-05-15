@@ -9,11 +9,18 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "seed:personas": "tsx scripts/seed-personas.ts"
   },
   "devDependencies": {
+    "dotenv": "^16.4.5",
+    "tsx": "^4.19.0",
     "turbo": "^2.1.0",
     "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@realfoodwin/gateway": "workspace:*",
+    "@supabase/supabase-js": "^2.45.0"
   },
   "engines": {
     "node": ">=20.0.0"
