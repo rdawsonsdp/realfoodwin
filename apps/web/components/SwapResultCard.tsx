@@ -133,14 +133,7 @@ export function SwapResultCard({
                   loading="lazy"
                 />
               ) : (
-                <div className="w-32 h-32 rounded-soft bg-forest grid place-items-center text-paper shadow-card">
-                  <div className="text-center leading-tight">
-                    <div className="text-4xl mb-1" aria-hidden>◯</div>
-                    <div className="text-[10px] font-bold uppercase tracking-widest">
-                      Real Food<br />Win
-                    </div>
-                  </div>
-                </div>
+                <FillerLogo label={currentOutput.brand_name ?? "No image"} />
               )}
             </a>
             <div className="flex-1 min-w-0">
@@ -516,6 +509,21 @@ function RetryingOverlay() {
         <div>
           <p className="font-semibold text-ink">Cooking another version…</p>
           <p className="text-xs text-ink-muted">Asking the chef for something different.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FillerLogo({ label }: { label: string }) {
+  return (
+    <div className="w-32 h-32 rounded-soft bg-gradient-to-br from-cream to-honey/40 ring-1 ring-ink/10 grid place-items-center shadow-card">
+      <div className="text-center leading-tight px-2">
+        <div className="text-4xl mb-1" aria-hidden>
+          🥗
+        </div>
+        <div className="text-[10px] font-bold uppercase tracking-widest text-ink-soft line-clamp-2">
+          {label}
         </div>
       </div>
     </div>

@@ -48,8 +48,13 @@ export default async function BrandsPage() {
                       loading="lazy"
                     />
                   ) : (
-                    <div className="w-24 h-24 rounded-soft bg-cream grid place-items-center text-2xl font-bold text-ink-muted">
-                      {b.name?.charAt(0).toUpperCase() ?? "?"}
+                    <div className="w-24 h-24 rounded-soft bg-gradient-to-br from-cream to-honey/40 ring-1 ring-ink/10 grid place-items-center">
+                      <div className="text-center leading-tight px-2">
+                        <div className="text-3xl mb-1" aria-hidden>🥗</div>
+                        <div className="text-[9px] font-bold uppercase tracking-widest text-ink-soft line-clamp-2">
+                          {b.name ?? "No image"}
+                        </div>
+                      </div>
                     </div>
                   )}
                   <div className="text-sm font-semibold text-ink truncate w-full">
