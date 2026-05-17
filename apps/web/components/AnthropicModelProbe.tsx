@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { apiGet } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { apiGet, apiPost } from "@/lib/api";
 
 interface ModelRow {
   id: string;
@@ -15,10 +16,15 @@ interface ProbeData {
   models: ModelRow[];
 }
 
+type Tier = "sonnet" | "haiku";
+
 export function AnthropicModelProbe() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ProbeData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busyRow, setBusyRow] = useState<{ id: string; tier: Tier } | null>(null);
+  const [savedRow, setSavedRow] = useState<{ id: string; tier: Tier } | null>(null);
 
   async function probe() {
     setLoading(true);
@@ -30,6 +36,21 @@ export function AnthropicModelProbe() {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function setTier(modelId: string, tier: Tier) {
+    setBusyRow({ id: modelId, tier });
+    setSavedRow(null);
+    setError(null);
+    try {
+      await apiPost("/api/admin/models", { [tier]: modelId });
+      setSavedRow({ id: modelId, tier });
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusyRow(null);
     }
   }
 
@@ -53,18 +74,53 @@ export function AnthropicModelProbe() {
             key: {data.fingerprint} · {data.count} models accessible
           </p>
           <ul className="divide-y divide-ink/10 border border-ink/10 rounded-soft overflow-hidden">
-            {data.models.map((m) => (
-              <li key={m.id} className="px-3 py-2 flex items-center justify-between gap-3 text-sm">
-                <div>
-                  <code className="font-mono">{m.id}</code>
-                  {m.display_name && <span className="text-ink-muted ml-2">{m.display_name}</span>}
-                </div>
-                {m.created_at && <span className="text-xs text-ink-muted">{m.created_at.slice(0, 10)}</span>}
-              </li>
-            ))}
+            {data.models.map((m) => {
+              const justSavedSonnet = savedRow?.id === m.id && savedRow.tier === "sonnet";
+              const justSavedHaiku = savedRow?.id === m.id && savedRow.tier === "haiku";
+              const busy = busyRow?.id === m.id;
+              return (
+                <li key={m.id} className="px-3 py-2 flex items-center justify-between gap-3 text-sm">
+                  <div className="min-w-0">
+                    <code className="font-mono">{m.id}</code>
+                    {m.display_name && (
+                      <span className="text-ink-muted ml-2">{m.display_name}</span>
+                    )}
+                    {m.created_at && (
+                      <span className="text-xs text-ink-muted ml-2">· {m.created_at.slice(0, 10)}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => setTier(m.id, "sonnet")}
+                      disabled={busy}
+                      className="btn-ghost text-xs px-2 py-1 border border-ink/10 rounded-pill disabled:opacity-50"
+                      title="Use as the Sonnet tier (user-facing)"
+                    >
+                      {busyRow?.id === m.id && busyRow.tier === "sonnet"
+                        ? "Saving…"
+                        : justSavedSonnet
+                        ? "✓ Sonnet"
+                        : "Set as Sonnet"}
+                    </button>
+                    <button
+                      onClick={() => setTier(m.id, "haiku")}
+                      disabled={busy}
+                      className="btn-ghost text-xs px-2 py-1 border border-ink/10 rounded-pill disabled:opacity-50"
+                      title="Use as the Haiku tier (background)"
+                    >
+                      {busyRow?.id === m.id && busyRow.tier === "haiku"
+                        ? "Saving…"
+                        : justSavedHaiku
+                        ? "✓ Haiku"
+                        : "Set as Haiku"}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
           <p className="text-xs text-ink-muted italic">
-            Copy any ID above and paste it into the Sonnet/Haiku field, then save.
+            Saves write straight to app_settings — the gateway picks them up within 60 seconds.
           </p>
         </div>
       )}

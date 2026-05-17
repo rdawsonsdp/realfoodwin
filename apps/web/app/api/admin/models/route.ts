@@ -3,20 +3,24 @@ import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { requireEnv } from "@/lib/env";
-import { isAdminEmail } from "@/lib/admin";
+import { isAdminRequest } from "@/lib/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const Schema = z.object({
-  sonnet: z.string().min(2).max(100),
-  haiku: z.string().min(2).max(100),
-});
+const Schema = z
+  .object({
+    sonnet: z.string().min(2).max(100).optional(),
+    haiku: z.string().min(2).max(100).optional(),
+  })
+  .refine((v) => v.sonnet || v.haiku, {
+    message: "At least one of sonnet or haiku must be provided.",
+  });
 
 export async function POST(req: Request) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email || !isAdminEmail(user.email)) {
+  if (!isAdminRequest(user?.email ?? null)) {
     return NextResponse.json({ error: { code: "forbidden" } }, { status: 403 });
   }
 
@@ -35,10 +39,13 @@ export async function POST(req: Request) {
     { auth: { persistSession: false } },
   );
 
-  const rows = [
-    { key: "model.sonnet", value: parsed.data.sonnet, updated_by: user.id },
-    { key: "model.haiku", value: parsed.data.haiku, updated_by: user.id },
-  ];
+  const rows: { key: string; value: string; updated_by: string | null }[] = [];
+  if (parsed.data.sonnet) {
+    rows.push({ key: "model.sonnet", value: parsed.data.sonnet, updated_by: user?.id ?? null });
+  }
+  if (parsed.data.haiku) {
+    rows.push({ key: "model.haiku", value: parsed.data.haiku, updated_by: user?.id ?? null });
+  }
 
   const { error } = await admin
     .from("app_settings")
@@ -50,5 +57,8 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true, data: { sonnet: parsed.data.sonnet, haiku: parsed.data.haiku } });
+  return NextResponse.json({
+    ok: true,
+    data: { sonnet: parsed.data.sonnet ?? null, haiku: parsed.data.haiku ?? null },
+  });
 }
