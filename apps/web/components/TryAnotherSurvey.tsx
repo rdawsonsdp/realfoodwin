@@ -71,9 +71,11 @@ export function TryAnotherSurvey({ swapId, query, onDone, onCancel }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <header>
-          <h2 className="text-xl font-bold text-ink">Quick — why didn't this work?</h2>
+          <h2 className="text-xl font-bold text-ink">
+            <span aria-hidden>🔄</span> What should we try next?
+          </h2>
           <p className="text-sm text-ink-soft">
-            One tap helps the AI pick something different next time.
+            One tap helps the AI pick something better next time.
           </p>
         </header>
 

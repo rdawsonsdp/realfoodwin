@@ -174,9 +174,10 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <button
             onClick={() => setShowTrySurvey(true)}
-            className="inline-flex items-center gap-2 rounded-pill bg-paper text-ink ring-1 ring-ink/10 px-4 py-2 text-sm font-semibold shadow-card hover:bg-honey/60 transition-colors"
+            className="inline-flex items-center gap-2 rounded-pill bg-coral text-white px-5 py-2.5 text-sm font-semibold shadow-warm hover:brightness-95 active:scale-[0.98] transition-all"
+            aria-label="Try again with a different swap"
           >
-            ← Try another swap
+            <span aria-hidden>🔄</span> Try again?
           </button>
         </div>
         {showDismiss ? (
