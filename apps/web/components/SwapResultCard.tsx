@@ -110,19 +110,28 @@ export function SwapResultCard({
             Real-food product for <strong>{result.query}</strong>
           </p>
           <div className="flex flex-col md:flex-row md:items-center gap-6 mt-4">
-            {currentOutput.product_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={currentOutput.product_image_url}
-                alt={currentOutput.title}
-                className="w-32 h-32 object-contain rounded-soft bg-white p-2 shadow-card"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-32 h-32 rounded-soft bg-cream grid place-items-center text-3xl font-bold text-ink-muted shadow-card">
-                {currentOutput.title?.charAt(0).toUpperCase() ?? "?"}
-              </div>
-            )}
+            <a
+              href={currentOutput.product_url ?? "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 transition-transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-coral rounded-soft"
+              aria-label={`Visit ${currentOutput.brand_name ?? "the brand site"}`}
+              title={`Visit ${currentOutput.brand_name ?? "the brand site"}`}
+            >
+              {currentOutput.product_image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={currentOutput.product_image_url}
+                  alt={currentOutput.title}
+                  className="w-32 h-32 object-contain rounded-soft bg-white p-2 shadow-card"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-soft bg-cream grid place-items-center text-3xl font-bold text-ink-muted shadow-card">
+                  {currentOutput.title?.charAt(0).toUpperCase() ?? "?"}
+                </div>
+              )}
+            </a>
             <div className="flex-1 min-w-0">
               {currentOutput.brand_name && (
                 <p className="text-xs uppercase tracking-[0.18em] text-ink-muted mb-1">
