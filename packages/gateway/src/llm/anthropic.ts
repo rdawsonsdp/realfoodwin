@@ -15,7 +15,7 @@ export type ModelTier = "sonnet" | "haiku";
 // flow is verified end-to-end. To re-enable runtime override, swap
 // resolveModel() back to the DB-backed implementation in git history.
 export const MODELS: Record<ModelTier, string> = {
-  sonnet: "claude-sonnet-4-6",
+  sonnet: "claude-sonnet-4-5-20250929",
   haiku: "claude-haiku-4-5-20251001",
 };
 
