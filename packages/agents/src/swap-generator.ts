@@ -23,6 +23,8 @@ Rules:
     - Fill product_image_url with a direct image of the product if you know one, otherwise leave it null.
     - In this case the recipe should be an empty placeholder ({ "ingredients": [], "steps": [], "time_min": 0 }).
     - tagline can summarize the product in one short line.
+- ALWAYS include 2-3 alternates in the "alternates" field. Each alternate is a genuinely different swap — different cuisine, different protein, different format, different cook time. These should NOT repeat the primary or each other. Keep them light: just a title, tagline, narrative, and (for product mode) product_url + brand_name; or (for recipe mode) a short recipe with ingredients + steps. The user will rotate through these without us re-querying.
+- If you received a "User said:" feedback note about a previous swap, treat it as a hard constraint when picking BOTH the primary and the alternates.
 
 Output ONLY via the generate_swap tool.`;
 
@@ -115,6 +117,47 @@ export const TOOL = {
         description:
           "Image URL of the recommended product when one is known. Null otherwise.",
       },
+      alternates: {
+        type: "array",
+        description:
+          "2-3 alternate swap ideas the user can rotate to without us re-querying. Each must be genuinely different from the primary and from each other.",
+        items: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            tagline: { type: "string" },
+            narrative: { type: "string" },
+            product_url: { type: ["string", "null"] },
+            brand_name: { type: ["string", "null"] },
+            product_image_url: { type: ["string", "null"] },
+            recipe: {
+              type: ["object", "null"],
+              properties: {
+                ingredients: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string" },
+                      quantity: { type: "string" },
+                      unit: { type: "string" },
+                    },
+                    required: ["name", "quantity"],
+                  },
+                },
+                steps: { type: "array", items: { type: "string" } },
+                time_min: { type: "number" },
+                difficulty: {
+                  type: "string",
+                  enum: ["beginner", "comfortable", "confident"],
+                },
+                meal_type: { type: "string" },
+              },
+            },
+          },
+          required: ["title", "narrative"],
+        },
+      },
     },
     required: ["title", "recipe", "narrative", "tuned_for_you_reasons"],
   },
@@ -161,6 +204,34 @@ export const OutputSchema = z.object({
   product_url: z.string().url().nullish(),
   brand_name: z.string().nullish(),
   product_image_url: z.string().url().nullish(),
+  alternates: z
+    .array(
+      z.object({
+        title: z.string(),
+        tagline: z.string().optional(),
+        narrative: z.string(),
+        product_url: z.string().url().nullish(),
+        brand_name: z.string().nullish(),
+        product_image_url: z.string().url().nullish(),
+        recipe: z
+          .object({
+            ingredients: z.array(
+              z.object({
+                name: z.string(),
+                quantity: z.string(),
+                unit: z.string().optional(),
+              }),
+            ),
+            steps: z.array(z.string()),
+            time_min: z.number(),
+            difficulty: z.enum(["beginner", "comfortable", "confident"]).optional(),
+            meal_type: z.string().optional(),
+          })
+          .nullish(),
+      }),
+    )
+    .max(5)
+    .optional(),
 });
 
 export type SwapGeneratorOutput = z.infer<typeof OutputSchema>;

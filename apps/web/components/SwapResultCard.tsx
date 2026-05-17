@@ -8,6 +8,22 @@ import { RecipeActions } from "./RecipeActions";
 import { StarRating } from "./StarRating";
 import { FoodConfetti } from "./FoodConfetti";
 
+export interface SwapAlternate {
+  title: string;
+  tagline?: string;
+  narrative: string;
+  product_url?: string | null;
+  brand_name?: string | null;
+  product_image_url?: string | null;
+  recipe?: {
+    ingredients: { name: string; quantity: string; unit?: string }[];
+    steps: string[];
+    time_min: number;
+    difficulty?: string;
+    meal_type?: string;
+  } | null;
+}
+
 export interface SwapResult {
   query: string;
   output: {
@@ -31,6 +47,7 @@ export interface SwapResult {
     product_url?: string | null;
     brand_name?: string | null;
     product_image_url?: string | null;
+    alternates?: SwapAlternate[] | null;
   } | null;
   latencyMs: number | null;
   cached: boolean;
@@ -52,7 +69,7 @@ export function SwapResultCard({
 }: {
   result: SwapResult;
   isLoggedIn: boolean;
-  onTryAnotherVersion?: () => void;
+  onTryAnotherVersion?: (feedback?: string) => void;
   retryingVersion?: boolean;
 }) {
   const router = useRouter();
@@ -67,6 +84,41 @@ export function SwapResultCard({
 
   if (!currentOutput) {
     return <div className="card p-5 md:p-8">No result.</div>;
+  }
+
+  function promoteAlternate(alt: SwapAlternate) {
+    setCurrentOutput((prev) => {
+      if (!prev) return prev;
+      const wasPrimary: SwapAlternate = {
+        title: prev.title,
+        tagline: prev.tagline,
+        narrative: prev.narrative,
+        product_url: prev.product_url ?? null,
+        brand_name: prev.brand_name ?? null,
+        product_image_url: prev.product_image_url ?? null,
+        recipe: prev.recipe?.ingredients.length || prev.recipe?.steps.length ? prev.recipe : null,
+      };
+      const remaining = (prev.alternates ?? []).filter(
+        (a) => a.title !== alt.title,
+      );
+      const promotedRecipe = alt.recipe ?? {
+        ingredients: [],
+        steps: [],
+        time_min: 0,
+      };
+      return {
+        ...prev,
+        title: alt.title,
+        tagline: alt.tagline,
+        narrative: alt.narrative,
+        product_url: alt.product_url ?? null,
+        brand_name: alt.brand_name ?? null,
+        product_image_url: alt.product_image_url ?? null,
+        recipe: promotedRecipe,
+        alternates: [wasPrimary, ...remaining],
+      };
+    });
+    setCelebrate(true);
   }
 
   async function onSave() {
@@ -168,7 +220,7 @@ export function SwapResultCard({
           {onTryAnotherVersion && (
             <button
               type="button"
-              onClick={onTryAnotherVersion}
+              onClick={() => onTryAnotherVersion()}
               disabled={retryingVersion}
               className="btn-secondary inline-flex items-center gap-2"
             >
@@ -185,6 +237,13 @@ export function SwapResultCard({
             </button>
           )}
         </div>
+
+        {currentOutput.alternates && currentOutput.alternates.length > 0 && (
+          <AlternatesRow
+            alternates={currentOutput.alternates}
+            onPick={(alt) => promoteAlternate(alt)}
+          />
+        )}
 
         <FoodConfetti active={celebrate} onDone={() => setCelebrate(false)} />
       </article>
@@ -236,7 +295,7 @@ export function SwapResultCard({
             <>
               <span className="text-ink-muted text-xs">·</span>
               <button
-                onClick={onTryAnotherVersion}
+                onClick={() => onTryAnotherVersion()}
                 disabled={retryingVersion}
                 className="text-xs px-3 py-1.5 rounded-pill border border-sunrise/40 text-sunrise-700 hover:bg-sunrise/10 disabled:opacity-50 inline-flex items-center gap-1.5"
                 title="Generate a different real-food swap from the same query"
@@ -450,6 +509,13 @@ export function SwapResultCard({
         )}
       </div>
 
+      {currentOutput.alternates && currentOutput.alternates.length > 0 && (
+        <AlternatesRow
+          alternates={currentOutput.alternates}
+          onPick={(alt) => promoteAlternate(alt)}
+        />
+      )}
+
       <FoodConfetti active={celebrate} onDone={() => setCelebrate(false)} />
     </article>
   );
@@ -525,6 +591,65 @@ function FillerLogo({ label }: { label: string }) {
         <div className="text-[10px] font-bold uppercase tracking-widest text-ink-soft line-clamp-2">
           {label}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function AlternatesRow({
+  alternates,
+  onPick,
+}: {
+  alternates: SwapAlternate[];
+  onPick: (alt: SwapAlternate) => void;
+}) {
+  return (
+    <div className="px-5 md:px-8 pb-6 pt-4 border-t border-ink/5 bg-paper/40">
+      <p className="text-xs uppercase tracking-[0.18em] text-ink-muted mb-3">
+        Other ideas (no extra wait)
+      </p>
+      <div className="flex gap-3 overflow-x-auto scroll-row -mx-5 md:-mx-0 px-5 md:px-0 pb-2">
+        {alternates.map((alt, i) => (
+          <button
+            key={`${alt.title}-${i}`}
+            type="button"
+            onClick={() => onPick(alt)}
+            className="card p-3 w-56 shrink-0 text-left hover:shadow-warm hover:-translate-y-0.5 transition-all flex flex-col gap-2"
+            aria-label={`Switch to ${alt.title}`}
+          >
+            <div className="flex items-center gap-2">
+              {alt.product_image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={alt.product_image_url}
+                  alt={alt.title}
+                  className="w-10 h-10 object-contain rounded-soft bg-cream"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-soft bg-gradient-to-br from-cream to-honey/40 grid place-items-center text-lg">
+                  🥗
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                {alt.brand_name && (
+                  <p className="text-[10px] uppercase tracking-wide text-ink-muted truncate">
+                    {alt.brand_name}
+                  </p>
+                )}
+                <p className="text-sm font-semibold text-ink line-clamp-2 leading-tight">
+                  {alt.title}
+                </p>
+              </div>
+            </div>
+            {alt.tagline && (
+              <p className="text-xs text-ink-soft line-clamp-2">{alt.tagline}</p>
+            )}
+            <span className="text-xs text-coral font-semibold mt-auto">
+              Switch to this →
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );

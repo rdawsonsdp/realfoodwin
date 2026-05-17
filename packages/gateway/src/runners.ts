@@ -31,6 +31,7 @@ export interface SwapGeneratorRunInput {
   image?: ImageInput;
   preferences?: SwapPreferencesInput | null;
   avoidTitles?: string[] | null;
+  feedback?: string | null;
   clientPlatform: ClientPlatform;
   skipCache?: boolean;
 }
@@ -69,7 +70,11 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
           .map((t) => `"${t}"`)
           .join(", ")}.`
       : "";
-  const requestText = baseRequest + formatPreferences(input.preferences) + avoidBlock;
+  const feedbackBlock = input.feedback?.trim()
+    ? `\n\nUser said about the previous swap: "${input.feedback.trim()}". Treat this as a hard constraint when picking BOTH the primary and the alternates.`
+    : "";
+  const requestText =
+    baseRequest + formatPreferences(input.preferences) + avoidBlock + feedbackBlock;
   const userPrompt = composePromptBlocks(ctx, requestText);
 
   const start = Date.now();

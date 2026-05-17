@@ -30,6 +30,7 @@ const RequestSchema = z
     image: ImageSchema.optional(),
     preferences: PreferencesSchema,
     avoid_titles: z.array(z.string().max(160)).max(8).optional(),
+    feedback: z.string().max(500).optional(),
   })
   .refine((v) => (v.query && v.query.trim().length >= 2) || v.image, {
     message: "Provide a query (2+ chars) or an image.",
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
         : undefined,
       preferences: parsed.data.preferences ?? null,
       avoidTitles: parsed.data.avoid_titles ?? null,
+      feedback: parsed.data.feedback ?? null,
       clientPlatform: "web",
       skipCache: parsed.data.skip_cache,
     });

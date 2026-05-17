@@ -18,7 +18,7 @@ const QUICK_REASONS = [
 interface Props {
   swapId: string | null;
   query: string;
-  onDone: () => void;
+  onDone: (feedback: { reason: string | null; custom: string }) => void;
   onCancel: () => void;
 }
 
@@ -52,7 +52,7 @@ export function TryAnotherSurvey({ swapId, query, onDone, onCancel }: Props) {
     } catch {
       // anonymous users hit auth — that's fine, just continue
     } finally {
-      onDone();
+      onDone({ reason, custom: finalCustom.trim() });
     }
   }
 

@@ -39,7 +39,12 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   async function runSwap(
     q: string,
     img?: PickedImage | null,
-    opts?: { skipCache?: boolean; avoidTitles?: string[]; isRetry?: boolean },
+    opts?: {
+      skipCache?: boolean;
+      avoidTitles?: string[];
+      isRetry?: boolean;
+      feedback?: string;
+    },
   ) {
     if (opts?.isRetry) {
       setRetryingVersion(true);
@@ -65,6 +70,7 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
         ...(opts?.avoidTitles && opts.avoidTitles.length
           ? { avoid_titles: opts.avoidTitles }
           : {}),
+        ...(opts?.feedback ? { feedback: opts.feedback } : {}),
       });
 
       const nextResult: SwapResult = {
@@ -101,12 +107,13 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
     }
   }
 
-  async function onTryAnotherVersion() {
+  async function onTryAnotherVersion(feedback?: string) {
     if (!result) return;
     await runSwap(result.query === "(photo)" ? "" : result.query, image, {
       skipCache: true,
       avoidTitles: seenTitles,
       isRetry: true,
+      feedback,
     });
   }
 
@@ -198,9 +205,16 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
           <TryAnotherSurvey
             swapId={result.swapId}
             query={result.query}
-            onDone={() => {
+            onDone={({ reason, custom }) => {
               setShowTrySurvey(false);
-              backToSwapScreen();
+              // Compose a one-line feedback string the prompt can ingest.
+              const feedback = [
+                reason && reason !== "skip" ? reason.replace(/-/g, " ") : null,
+                custom || null,
+              ]
+                .filter(Boolean)
+                .join(" — ");
+              void onTryAnotherVersion(feedback || undefined);
             }}
             onCancel={() => setShowTrySurvey(false)}
           />
