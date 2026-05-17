@@ -2,14 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { isAdminEmail } from "@/lib/admin";
+import { isAdminRequest } from "@/lib/admin";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) redirect("/sign-in?next=" + encodeURIComponent("/admin"));
-  if (!isAdminEmail(user.email)) {
+  if (!isAdminRequest(user.email)) {
     redirect("/?error=admin_only");
   }
 

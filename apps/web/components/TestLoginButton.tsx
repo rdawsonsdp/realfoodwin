@@ -12,7 +12,7 @@ const PERSONAS: { email: string; display: string; blurb: string }[] = [
   { email: "jessica.lee+rfw-demo@realfoodwin.test", display: "Jessica Lee", blurb: "Curious skeptic" },
 ];
 
-type Step = "creds" | "pick" | "working";
+type Step = "creds" | "choice" | "pick" | "working";
 
 export function TestLoginButton() {
   const router = useRouter();
@@ -47,16 +47,37 @@ export function TestLoginButton() {
       setError("Incorrect password.");
       return;
     }
-    setStep("pick");
+    setStep("choice");
+  }
+
+  async function loginAsAdmin() {
+    setStep("working");
+    setError(null);
+    try {
+      const data = await apiPost<{ redirect: string }>("/api/test-login", {
+        mode: "admin",
+        password,
+      });
+      close();
+      router.push(data.redirect ?? "/admin");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStep("choice");
+    }
   }
 
   async function impersonate(email: string) {
     setStep("working");
     setError(null);
     try {
-      await apiPost("/api/test-login", { password, email });
+      const data = await apiPost<{ redirect: string }>("/api/test-login", {
+        mode: "impersonate",
+        password,
+        email,
+      });
       close();
-      router.push("/");
+      router.push(data.redirect ?? "/");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -69,7 +90,7 @@ export function TestLoginButton() {
       <button
         onClick={() => setOpen(true)}
         className="btn-ghost text-xs px-3 py-1.5 border border-ink/10 rounded-pill"
-        title="Demo login to view the app as any persona"
+        title="Demo login: admin or impersonate any persona"
       >
         🧪 Test Login
       </button>
@@ -121,6 +142,36 @@ export function TestLoginButton() {
               </>
             )}
 
+            {step === "choice" && (
+              <>
+                <header>
+                  <h2 className="text-xl font-bold">How do you want to enter?</h2>
+                  <p className="text-sm text-ink-soft">Pick admin to manage models / personas / retention, or impersonate any persona.</p>
+                </header>
+                <div className="grid gap-3">
+                  <button
+                    onClick={loginAsAdmin}
+                    className="card p-4 text-left hover:bg-cream transition-colors"
+                  >
+                    <div className="font-semibold">🛠 Sign in as Admin</div>
+                    <div className="text-sm text-ink-muted">Full control room — models, personas, intelligence, satisfaction, activity, spend.</div>
+                  </button>
+                  <button
+                    onClick={() => setStep("pick")}
+                    className="card p-4 text-left hover:bg-cream transition-colors"
+                  >
+                    <div className="font-semibold">👤 Impersonate a user</div>
+                    <div className="text-sm text-ink-muted">View the app as a specific persona.</div>
+                  </button>
+                </div>
+                {error && <p className="text-sm text-coral">{error}</p>}
+                <div className="flex justify-between pt-2">
+                  <button onClick={() => setStep("creds")} className="btn-ghost text-sm">← Back</button>
+                  <button onClick={close} className="btn-ghost text-sm">Cancel</button>
+                </div>
+              </>
+            )}
+
             {step === "pick" && (
               <>
                 <header>
@@ -169,7 +220,7 @@ export function TestLoginButton() {
                 </form>
                 {error && <p className="text-sm text-coral">{error}</p>}
                 <div className="flex justify-between pt-2">
-                  <button onClick={() => setStep("creds")} className="btn-ghost text-sm">← Back</button>
+                  <button onClick={() => setStep("choice")} className="btn-ghost text-sm">← Back</button>
                   <button onClick={close} className="btn-ghost text-sm">Cancel</button>
                 </div>
               </>

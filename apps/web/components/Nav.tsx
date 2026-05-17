@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { isAdminEmail } from "@/lib/admin";
+import { isAdminRequest } from "@/lib/admin";
 import { TestLoginButton } from "./TestLoginButton";
 
 export async function Nav() {
@@ -8,7 +8,7 @@ export async function Nav() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const isAdmin = isAdminEmail(user?.email ?? null);
+  const isAdmin = isAdminRequest(user?.email ?? null);
 
   return (
     <header className="sticky top-0 z-30 backdrop-blur-md bg-paper/80 border-b border-ink/5">
