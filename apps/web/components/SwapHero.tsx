@@ -23,6 +23,7 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [query, setQuery] = useState("");
   const [image, setImage] = useState<PickedImage | null>(null);
   const [prefs, setPrefs] = useState<SwapPrefsValue>(EMPTY_PREFS);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SwapResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +75,32 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
       setLoading(false);
     }
   }
+
+  // Restore the user's per-swap preferences from the previous visit. Stored
+  // per-browser via localStorage so the picks survive reloads without a DB
+  // migration. The persona changes via Test Login don't clear it — preferences
+  // travel with the browser, not the auth session.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("rfw.swapPrefs");
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<SwapPrefsValue>;
+        setPrefs({ ...EMPTY_PREFS, ...parsed });
+      }
+    } catch {
+      // Quota / private mode / parse failure — fall back to empty defaults.
+    }
+    setPrefsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!prefsLoaded) return;
+    try {
+      window.localStorage.setItem("rfw.swapPrefs", JSON.stringify(prefs));
+    } catch {
+      // Silently swallow — preferences just won't persist this session.
+    }
+  }, [prefs, prefsLoaded]);
 
   // Auto-run when the URL carries ?q= — used to resume after the sign-in + quiz
   // detour so the "Save → sign in → quiz → personalized swap" loop completes
