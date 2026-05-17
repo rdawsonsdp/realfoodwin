@@ -149,3 +149,60 @@ export async function DELETE(req: Request) {
   }
   return NextResponse.json({ ok: true, data: { removed: count } });
 }
+
+const PatchSchema = z
+  .object({
+    entry_id: z.string().uuid().optional(),
+    recipe_id: z.string().uuid().optional(),
+    swap_id: z.string().uuid().optional(),
+    variant_id: z.string().uuid().optional(),
+    notes: z.string().max(2000).nullable(),
+  })
+  .refine(
+    (v) =>
+      [v.entry_id, v.recipe_id, v.swap_id, v.variant_id].filter(Boolean).length === 1,
+    { message: "Provide exactly one of entry_id, recipe_id, swap_id, or variant_id" },
+  );
+
+export async function PATCH(req: Request) {
+  const body = await req.json().catch(() => null);
+  const parsed = PatchSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: { code: "validation_error", details: parsed.error.format() } },
+      { status: 400 },
+    );
+  }
+
+  const supabase = createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: { code: "unauthenticated" } }, { status: 401 });
+  }
+
+  let q = supabase
+    .from("recipe_box_entries")
+    .update({ notes: parsed.data.notes })
+    .eq("user_id", user.id);
+  if (parsed.data.entry_id) q = q.eq("id", parsed.data.entry_id);
+  else if (parsed.data.recipe_id) q = q.eq("recipe_id", parsed.data.recipe_id);
+  else if (parsed.data.swap_id) q = q.eq("swap_id", parsed.data.swap_id);
+  else if (parsed.data.variant_id) q = q.eq("variant_id", parsed.data.variant_id);
+
+  const { data, error } = await q.select().maybeSingle();
+  if (error) {
+    return NextResponse.json(
+      { error: { code: "kitchen_update_failed", message: error.message } },
+      { status: 500 },
+    );
+  }
+  if (!data) {
+    return NextResponse.json(
+      { error: { code: "not_found", message: "No matching kitchen entry." } },
+      { status: 404 },
+    );
+  }
+  return NextResponse.json({ ok: true, data: { entry: data } });
+}

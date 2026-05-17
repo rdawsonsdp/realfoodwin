@@ -32,11 +32,12 @@ export default async function RecipeDetailPage({
   // Has the current user already saved this recipe to their kitchen?
   let alreadySaved = false;
   let myRating: number | null = null;
+  let myNotes: string | null = null;
   if (user) {
     const [savedRes, ratingRes] = await Promise.all([
       supabase
         .from("recipe_box_entries")
-        .select("id")
+        .select("id, notes")
         .eq("user_id", user.id)
         .eq("recipe_id", id)
         .maybeSingle(),
@@ -49,6 +50,7 @@ export default async function RecipeDetailPage({
         .maybeSingle(),
     ]);
     alreadySaved = !!savedRes.data;
+    myNotes = (savedRes.data as { notes?: string | null } | null)?.notes ?? null;
     myRating = ratingRes.data?.stars ?? null;
   }
 
@@ -151,6 +153,7 @@ export default async function RecipeDetailPage({
               recipeId={id}
               isLoggedIn={!!user}
               alreadySaved={alreadySaved}
+              initialNotes={myNotes}
             />
           </div>
 
