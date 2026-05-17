@@ -16,6 +16,17 @@ export class AnthropicCallError extends GatewayError {
   }
 }
 
+export class ModelNotFoundError extends GatewayError {
+  constructor(model: string, details?: unknown) {
+    super(
+      "MODEL_NOT_FOUND",
+      `Anthropic model "${model}" was not found. An admin must pick a valid model at /admin/models.`,
+      { model, ...(details && typeof details === "object" ? details : {}) },
+    );
+    this.name = "ModelNotFoundError";
+  }
+}
+
 export class SchemaValidationError extends GatewayError {
   constructor(message: string, details?: unknown) {
     super("SCHEMA_VALIDATION_FAILED", message, details);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { runSwapGenerator } from "@realfoodwin/gateway";
+import { runSwapGenerator, ModelNotFoundError } from "@realfoodwin/gateway";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 export const runtime = "nodejs"; // Anthropic SDK needs Node, not Edge
@@ -60,6 +60,18 @@ export async function POST(req: Request) {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("[/api/swap]", err);
+    if (err instanceof ModelNotFoundError) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "model_not_found",
+            message: err.message,
+            details: err.details,
+          },
+        },
+        { status: 502 },
+      );
+    }
     return NextResponse.json(
       {
         error: {

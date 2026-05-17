@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { apiPost } from "@/lib/api";
+import { apiPost, ApiError } from "@/lib/api";
 import { SwapResultCard, type SwapResult } from "./SwapResultCard";
 import { CookingAnimation } from "./CookingAnimation";
 import { VoiceButton } from "./VoiceButton";
@@ -16,12 +17,16 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SwapResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [badModel, setBadModel] = useState<string | null>(null);
   const [showDismiss, setShowDismiss] = useState(false);
   const searchParams = useSearchParams();
 
   async function runSwap(q: string) {
     setLoading(true);
     setError(null);
+    setErrorCode(null);
+    setBadModel(null);
     setResult(null);
     try {
       const data = await apiPost<{
@@ -39,7 +44,19 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
         swapId: data.swap?.id ?? null,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (err instanceof ApiError) {
+        setError(err.message);
+        setErrorCode(err.code);
+        if (err.code === "model_not_found") {
+          const m =
+            typeof err.details === "object" && err.details && "model" in err.details
+              ? String((err.details as { model: unknown }).model)
+              : null;
+          setBadModel(m);
+        }
+      } else {
+        setError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -158,11 +175,28 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
         )}
       </form>
 
-      {error && (
+      {error && errorCode === "model_not_found" ? (
+        <div className="max-w-2xl mx-auto card p-4 border border-honey/50 bg-honey/20 text-ink space-y-2">
+          <div>
+            <strong>Configured AI model is unavailable.</strong>{" "}
+            {badModel && (
+              <>
+                The model <code className="bg-cream px-1.5 py-0.5 rounded">{badModel}</code> was not found at Anthropic.
+              </>
+            )}
+          </div>
+          <div className="text-sm text-ink-soft">
+            An admin needs to pick a valid model — Sonnet 4.6 (<code>claude-sonnet-4-6</code>) is a safe default.
+          </div>
+          <Link href="/admin/models" className="btn-primary inline-block">
+            Open Admin → Models
+          </Link>
+        </div>
+      ) : error ? (
         <div className="max-w-2xl mx-auto card p-4 border border-coral/30 bg-coral-soft/30 text-ink">
           <strong>Something went wrong:</strong> {error}
         </div>
-      )}
+      ) : null}
 
       {loading && <CookingAnimation />}
     </div>

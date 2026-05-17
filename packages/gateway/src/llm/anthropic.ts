@@ -1,5 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { AnthropicCallError } from "../errors";
+import { AnthropicCallError, ModelNotFoundError } from "../errors";
+
+function rethrowAsCallError(err: unknown, model: string): never {
+  if (err instanceof Anthropic.APIError && err.status === 404) {
+    throw new ModelNotFoundError(model, { status: 404, message: err.message });
+  }
+  if (err instanceof AnthropicCallError || err instanceof ModelNotFoundError) throw err;
+  throw new AnthropicCallError(err instanceof Error ? err.message : String(err), err);
+}
 
 export type ModelTier = "sonnet" | "haiku";
 
@@ -89,10 +97,11 @@ export interface ToolCallResult {
 export async function callWithTool(opts: ToolCallOptions): Promise<ToolCallResult> {
   const c = client();
   const start = Date.now();
+  const model = await resolveModel(opts.tier);
 
   try {
     const resp = await c.messages.create({
-      model: await resolveModel(opts.tier),
+      model,
       max_tokens: opts.maxTokens ?? 2000,
       temperature: opts.temperature ?? 0.7,
       system: opts.system,
@@ -116,14 +125,10 @@ export async function callWithTool(opts: ToolCallOptions): Promise<ToolCallResul
         output_tokens: resp.usage.output_tokens,
       },
       latencyMs: Date.now() - start,
-      model: await resolveModel(opts.tier),
+      model,
     };
   } catch (err) {
-    if (err instanceof AnthropicCallError) throw err;
-    throw new AnthropicCallError(
-      err instanceof Error ? err.message : String(err),
-      err,
-    );
+    rethrowAsCallError(err, model);
   }
 }
 
@@ -145,9 +150,10 @@ export interface TextCallResult {
 export async function callText(opts: TextCallOptions): Promise<TextCallResult> {
   const c = client();
   const start = Date.now();
+  const model = await resolveModel(opts.tier);
   try {
     const resp = await c.messages.create({
-      model: await resolveModel(opts.tier),
+      model,
       max_tokens: opts.maxTokens ?? 1000,
       temperature: opts.temperature ?? 0.7,
       system: opts.system,
@@ -164,13 +170,9 @@ export async function callText(opts: TextCallOptions): Promise<TextCallResult> {
         output_tokens: resp.usage.output_tokens,
       },
       latencyMs: Date.now() - start,
-      model: await resolveModel(opts.tier),
+      model,
     };
   } catch (err) {
-    if (err instanceof AnthropicCallError) throw err;
-    throw new AnthropicCallError(
-      err instanceof Error ? err.message : String(err),
-      err,
-    );
+    rethrowAsCallError(err, model);
   }
 }
