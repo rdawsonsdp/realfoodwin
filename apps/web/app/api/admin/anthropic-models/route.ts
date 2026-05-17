@@ -56,6 +56,7 @@ export async function GET() {
     data: {
       fingerprint,
       count: models.length,
+      helicone_configured: !!process.env.HELICONE_API_KEY,
       models: models.map((m) => ({
         id: m.id,
         display_name: m.display_name ?? null,

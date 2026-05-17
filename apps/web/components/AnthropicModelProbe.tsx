@@ -13,6 +13,7 @@ interface ModelRow {
 interface ProbeData {
   fingerprint: string;
   count: number;
+  helicone_configured?: boolean;
   models: ModelRow[];
 }
 
@@ -112,6 +113,15 @@ export function AnthropicModelProbe() {
           <p className="text-xs text-ink-muted font-mono">
             key: {data.fingerprint} · {data.count} models accessible
           </p>
+          {data.helicone_configured && (
+            <p className="text-xs text-coral font-mono">
+              ⚠ HELICONE_API_KEY is set — messages.create routes through
+              anthropic.helicone.ai. The /v1/models listing above goes direct
+              to Anthropic. If Test call returns 404 but listing succeeds,
+              remove HELICONE_API_KEY (or fix the Helicone routing) and
+              redeploy.
+            </p>
+          )}
           <ul className="divide-y divide-ink/10 border border-ink/10 rounded-soft overflow-hidden">
             {data.models.map((m) => {
               const justSavedSonnet = savedRow?.id === m.id && savedRow.tier === "sonnet";
