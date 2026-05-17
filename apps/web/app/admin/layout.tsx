@@ -16,14 +16,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <>
       <Nav />
-      <main className="max-w-6xl mx-auto px-6 py-10">
+      <main className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10">
         <header className="mb-6">
           <p className="badge-tuned mb-3 inline-flex">Admin · demo only</p>
-          <h1 className="text-3xl font-bold tracking-tight text-paper">Real Food Win — Control Room</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-paper">Real Food Win — Control Room</h1>
         </header>
-        <nav className="flex gap-1 border-b border-white/10 mb-8 overflow-x-auto">
+        {/* -mx negative margin lets the tab strip bleed to the edge on phones
+            so the underline border feels intentional rather than truncated. */}
+        <nav className="flex gap-1 border-b border-white/10 mb-6 md:mb-8 overflow-x-auto scroll-row -mx-4 md:mx-0 px-4 md:px-0">
           <AdminTab href="/admin" label="Overview" />
           <AdminTab href="/admin/personas" label="Personas" />
+          <AdminTab href="/admin/brands" label="Brands" />
           <AdminTab href="/admin/intelligence" label="AI reasoning" />
           <AdminTab href="/admin/satisfaction" label="Satisfaction" />
           <AdminTab href="/admin/activity" label="Activity" />
@@ -42,7 +45,7 @@ function AdminTab({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="px-4 py-2.5 text-sm font-semibold text-paper/70 hover:text-paper hover:bg-white/10 rounded-t-soft transition-colors"
+      className="flex-shrink-0 px-4 py-3 min-h-[44px] text-sm font-semibold text-paper/70 hover:text-paper hover:bg-white/10 rounded-t-soft transition-colors whitespace-nowrap"
     >
       {label}
     </Link>

@@ -52,34 +52,104 @@
 }
 
 @layer components {
+  /* All primary CTAs are thumb-sized on phones (≥44px). py-3.5 reads ~52px tall. */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-pill bg-coral px-6 py-3 text-base font-semibold text-white shadow-warm transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-pill bg-coral px-6 py-3.5 min-h-[44px] text-base font-semibold text-white shadow-warm transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-pill bg-paper px-6 py-3 text-base font-semibold text-ink ring-1 ring-ink/10 shadow-card transition-all hover:ring-ink/20 active:scale-[0.98];
+    @apply inline-flex items-center justify-center gap-2 rounded-pill bg-paper px-6 py-3.5 min-h-[44px] text-base font-semibold text-ink ring-1 ring-ink/10 shadow-card transition-all hover:ring-ink/20 active:scale-[0.98];
   }
 
   /* btn-ghost stays light-surface friendly (cream nav, white cards). For
      placement directly on the forest body, wrap in a parent that overrides
-     to text-paper. */
+     to text-paper. Bumped to min-h-[44px] to be a real touch target. */
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-pill px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-ink hover:bg-honey/40;
+    @apply inline-flex items-center justify-center gap-2 rounded-pill px-4 py-2.5 min-h-[44px] text-sm font-medium text-ink-soft transition-colors hover:text-ink hover:bg-honey/40;
   }
 
   .btn-ghost-on-dark {
-    @apply inline-flex items-center justify-center gap-2 rounded-pill px-4 py-2 text-sm font-medium text-paper/80 transition-colors hover:text-paper hover:bg-white/10;
+    @apply inline-flex items-center justify-center gap-2 rounded-pill px-4 py-2.5 min-h-[44px] text-sm font-medium text-paper/80 transition-colors hover:text-paper hover:bg-white/10;
   }
 
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-pill bg-paper px-3 py-1.5 text-sm font-medium text-ink-soft ring-1 ring-ink/10 transition-colors hover:bg-honey hover:text-ink;
+    @apply inline-flex items-center gap-1.5 rounded-pill bg-paper px-3 py-2 min-h-[36px] text-sm font-medium text-ink-soft ring-1 ring-ink/10 transition-colors hover:bg-honey hover:text-ink;
   }
 
   .card {
     @apply rounded-soft bg-paper text-ink shadow-card ring-1 ring-ink/5;
   }
 
+  /* Form input baseline — 16px on phones to suppress iOS zoom, 44px+ tap
+     target, and the same cream-paper-on-card affordance the rest of the
+     forms in the app use. Drop on <input> and <textarea> in admin forms. */
+  .input {
+    @apply w-full px-3 py-2.5 min-h-[44px] text-base rounded-soft border border-ink/15 bg-paper text-ink placeholder:text-ink-muted focus:outline-none focus:border-coral;
+  }
+
   .badge-tuned {
     @apply inline-flex items-center gap-1.5 rounded-pill bg-coral/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-coral ring-1 ring-coral/30;
+  }
+
+  /* Bottom-sheet container for mobile modals. On <md it pins to the bottom of
+     the viewport, rounded only at the top; on md+ it falls back to a centered
+     card so existing desktop modal calls keep working visually. */
+  .bottom-sheet {
+    @apply fixed inset-x-0 bottom-0 z-[80] mx-auto w-full max-w-lg
+           rounded-t-soft bg-paper text-ink shadow-warm ring-1 ring-ink/10
+           max-h-[92vh] overflow-y-auto
+           md:static md:inset-auto md:rounded-soft md:max-h-[80vh] md:mx-auto;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .bottom-sheet-backdrop {
+    @apply fixed inset-0 z-[79] bg-ink/40 backdrop-blur-sm
+           flex items-end justify-center md:items-center md:p-4;
+  }
+
+  .bottom-sheet-grabber {
+    @apply mx-auto mt-2 mb-1 h-1.5 w-10 rounded-pill bg-ink/15 md:hidden;
+  }
+
+  /* Mobile bottom-nav tab bar. Hidden on md+ via responsive utility on the
+     element itself; sits flush against the safe-area inset on iOS. */
+  .mobile-tabbar {
+    @apply fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around
+           bg-paper/95 backdrop-blur ring-1 ring-ink/10 text-ink md:hidden;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@layer utilities {
+  /* iOS safe-area helpers — use on sticky headers, bottom-fixed bars, and
+     any full-bleed surface that should respect the home-indicator inset. */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Prevent the iOS auto-zoom on focus while letting Tailwind text sizing
+     still apply visually — base 16px is the threshold below which Safari
+     zooms the page. Drop on any <input> / <textarea>. */
+  .no-ios-zoom {
+    font-size: 16px;
+  }
+
+  /* Horizontal scroll row that bleeds to the screen edge — useful for
+     chip rails and tab strips on narrow phones. Pair with overflow-x-auto. */
+  .scroll-row {
+    scrollbar-width: none;
+  }
+  .scroll-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Locks body scroll while a sheet/modal is open. Apply via JS by toggling
+     this class on document.body. */
+  .scroll-locked {
+    overflow: hidden;
+    touch-action: none;
   }
 }
