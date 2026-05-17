@@ -198,7 +198,7 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
           <span className="italic font-serif">Diet Swaps</span>
         </h1>
         <p className="text-lg text-paper/80">
-          Type any product and press Enter — we'll show you the real-food version with ingredients, nutrition comparison, and a recipe you can make today.
+          Type any product and press Enter — we'll show you the real food version with ingredients, nutrition comparison, and a recipe you can make today.
         </p>
       </div>
 
