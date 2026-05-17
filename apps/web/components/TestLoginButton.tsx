@@ -115,13 +115,14 @@ export function TestLoginButton() {
 
       {open && (
         <div
-          className="fixed inset-0 z-[90] bg-ink/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+          className="fixed inset-0 z-[90] bg-ink/50 backdrop-blur-sm grid place-items-center p-4 overflow-y-auto"
           onClick={close}
           role="dialog"
           aria-modal="true"
+          style={{ minHeight: "100dvh" }}
         >
           <div
-            className="card w-full max-w-md p-5 md:p-6 space-y-4 animate-fade-up max-h-[calc(100vh-2rem)] overflow-y-auto"
+            className="card w-full max-w-md p-5 md:p-6 space-y-4 animate-fade-up max-h-[calc(100dvh-2rem)] overflow-y-auto my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {step === "creds" && (
