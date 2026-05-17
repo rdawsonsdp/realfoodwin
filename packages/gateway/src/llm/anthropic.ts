@@ -15,7 +15,7 @@ export type ModelTier = "sonnet" | "haiku";
 // a redeploy — see resolveModel() below which reads app_settings.
 export const MODELS: Record<ModelTier, string> = {
   sonnet: "claude-sonnet-4-6",
-  haiku: "claude-haiku-4-5",
+  haiku: "claude-haiku-4-5-20251001",
 };
 
 import { getServiceSupabase } from "../supabase";

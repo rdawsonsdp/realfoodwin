@@ -4,7 +4,7 @@ import { ModelSelector } from "@/components/ModelSelector";
 
 export const dynamic = "force-dynamic";
 
-const DEFAULTS = { sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5" };
+const DEFAULTS = { sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001" };
 
 export default async function AdminModelsPage() {
   const admin = createClient(
