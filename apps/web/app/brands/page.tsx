@@ -3,47 +3,77 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+interface BrandRow {
+  id: string;
+  name: string;
+  // Optional — the seed data may add these later. We `select *` so the page
+  // doesn't break before / after the columns ship.
+  logo_url?: string | null;
+  website_url?: string | null;
+  url?: string | null;
+}
+
 export default async function BrandsPage() {
   const supabase = createSupabaseServer();
-  const { data: brands } = await supabase
-    .from("brands")
-    .select("id, name, category, description, certifications")
-    .order("name");
+  const { data } = await supabase.from("brands").select("*").order("name");
+  const brands = (data ?? []) as BrandRow[];
 
   return (
     <>
       <Nav />
       <main className="max-w-5xl mx-auto px-6 py-12">
-        <header className="mb-10">
-          <h1 className="text-4xl font-bold tracking-tight">Brand directory</h1>
-          <p className="text-ink-soft mt-2">Real-food brands we trust.</p>
+        <header className="mb-10 text-center">
+          <h1 className="text-5xl font-bold tracking-tight text-paper">
+            Real Food <span className="italic font-serif text-coral">Brands</span>
+          </h1>
+          <p className="text-paper/80 mt-3 max-w-2xl mx-auto">
+            Brands we trust. Tap any tile to visit the brand directly.
+          </p>
         </header>
 
-        <div className="grid md:grid-cols-2 gap-4">
-          {brands?.map((b) => (
-            <article key={b.id} className="card p-6 hover:shadow-warm transition-shadow">
-              <div className="text-xs text-ink-muted uppercase tracking-wider mb-1">
-                {b.category ?? "Brand"}
-              </div>
-              <h3 className="font-bold text-lg text-ink mb-2">{b.name}</h3>
-              {b.description && (
-                <p className="text-sm text-ink-soft mb-3">{b.description}</p>
-              )}
-              {b.certifications && b.certifications.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {b.certifications.map((c: string) => (
-                    <span
-                      key={c}
-                      className="text-xs px-2 py-0.5 rounded-pill bg-sage-soft text-ink"
-                    >
-                      {c}
-                    </span>
-                  ))}
+        {brands.length === 0 ? (
+          <p className="text-paper/70 text-center">No brands yet.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {brands.map((b) => {
+              const href = b.website_url ?? b.url ?? null;
+              const inner = (
+                <div className="card p-4 flex flex-col items-center justify-center text-center gap-3 hover:shadow-warm hover:-translate-y-0.5 transition-all h-full">
+                  {b.logo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={b.logo_url}
+                      alt={`${b.name} logo`}
+                      className="w-24 h-24 object-contain"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 rounded-soft bg-cream grid place-items-center text-2xl font-bold text-ink-muted">
+                      {b.name?.charAt(0).toUpperCase() ?? "?"}
+                    </div>
+                  )}
+                  <div className="text-sm font-semibold text-ink truncate w-full">
+                    {b.name}
+                  </div>
                 </div>
-              )}
-            </article>
-          )) ?? <p className="text-ink-muted">No brands yet.</p>}
-        </div>
+              );
+              return href ? (
+                <a
+                  key={b.id}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                  aria-label={`Visit ${b.name}`}
+                >
+                  {inner}
+                </a>
+              ) : (
+                <div key={b.id}>{inner}</div>
+              );
+            })}
+          </div>
+        )}
       </main>
     </>
   );
