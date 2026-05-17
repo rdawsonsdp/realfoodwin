@@ -6,11 +6,21 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 export const runtime = "nodejs"; // Anthropic SDK needs Node, not Edge
 export const dynamic = "force-dynamic";
 
-const RequestSchema = z.object({
-  query: z.string().min(2).max(120),
-  product_id: z.string().uuid().optional(),
-  skip_cache: z.boolean().optional(),
+const ImageSchema = z.object({
+  media_type: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+  data: z.string().min(100).max(8_000_000), // base64; ~6MB raw cap
 });
+
+const RequestSchema = z
+  .object({
+    query: z.string().max(200).optional().default(""),
+    product_id: z.string().uuid().optional(),
+    skip_cache: z.boolean().optional(),
+    image: ImageSchema.optional(),
+  })
+  .refine((v) => (v.query && v.query.trim().length >= 2) || v.image, {
+    message: "Provide a query (2+ chars) or an image.",
+  });
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -31,7 +41,10 @@ export async function POST(req: Request) {
     const result = await runSwapGenerator({
       userId: user?.id ?? null,
       productId: parsed.data.product_id ?? null,
-      request: parsed.data.query,
+      request: parsed.data.query ?? "",
+      image: parsed.data.image
+        ? { mediaType: parsed.data.image.media_type, data: parsed.data.image.data }
+        : undefined,
       clientPlatform: "web",
       skipCache: parsed.data.skip_cache,
     });

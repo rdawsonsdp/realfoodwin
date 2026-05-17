@@ -7,13 +7,20 @@ import { apiPost, ApiError } from "@/lib/api";
 import { SwapResultCard, type SwapResult } from "./SwapResultCard";
 import { CookingAnimation } from "./CookingAnimation";
 import { VoiceButton } from "./VoiceButton";
-import { CuisineChips } from "./CuisineChips";
+import { PhotoUploadButton } from "./PhotoUploadButton";
 import { DismissSurvey } from "./DismissSurvey";
 
 const EXAMPLES = ["Snickers", "Doritos", "Oreos", "Big Mac", "Pop-Tarts"];
 
+interface PickedImage {
+  mediaType: "image/jpeg";
+  data: string;
+  previewUrl: string;
+}
+
 export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [query, setQuery] = useState("");
+  const [image, setImage] = useState<PickedImage | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SwapResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +29,7 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [showDismiss, setShowDismiss] = useState(false);
   const searchParams = useSearchParams();
 
-  async function runSwap(q: string) {
+  async function runSwap(q: string, img?: PickedImage | null) {
     setLoading(true);
     setError(null);
     setErrorCode(null);
@@ -34,10 +41,13 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
         swap: { id: string } | null;
         output: SwapResult["output"] | null;
         latency_ms: number | null;
-      }>("/api/swap", { query: q });
+      }>("/api/swap", {
+        query: q,
+        ...(img ? { image: { media_type: img.mediaType, data: img.data } } : {}),
+      });
 
       setResult({
-        query: q,
+        query: q || "(photo)",
         output: data.output,
         latencyMs: data.latency_ms,
         cached: data.cached,
@@ -76,8 +86,14 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (query.trim().length < 2) return;
-    void runSwap(query.trim());
+    const q = query.trim();
+    if (!image && q.length < 2) return;
+    void runSwap(q, image);
+  }
+
+  function clearPickedImage() {
+    if (image) URL.revokeObjectURL(image.previewUrl);
+    setImage(null);
   }
 
   if (result) {
@@ -124,29 +140,57 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
         <div className="card p-2 flex items-center gap-2 shadow-warm">
           <input
             type="text"
-            placeholder="Type or say 'Snickers'…"
+            placeholder={image ? "Add a note (optional)…" : "Type or say 'Snickers'…"}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             disabled={loading}
             className="flex-1 px-5 py-4 bg-transparent outline-none text-lg placeholder:text-ink-muted"
+          />
+          <PhotoUploadButton
+            disabled={loading}
+            onPicked={(img) => {
+              clearPickedImage();
+              setImage(img);
+            }}
           />
           <VoiceButton
             disabled={loading}
             onTranscript={(text, isFinal) => {
               setQuery(text);
               if (isFinal && text.trim().length >= 2) {
-                void runSwap(text.trim());
+                void runSwap(text.trim(), image);
               }
             }}
           />
           <button
             type="submit"
-            disabled={loading || query.trim().length < 2}
+            disabled={loading || (!image && query.trim().length < 2)}
             className="btn-primary py-3"
           >
             {loading ? "Cooking…" : "Find swap →"}
           </button>
         </div>
+
+        {image && (
+          <div className="mt-3 flex items-center gap-3 max-w-2xl mx-auto">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={image.previewUrl}
+              alt="Uploaded preview"
+              className="w-20 h-20 object-cover rounded-soft border border-ink/10"
+            />
+            <div className="text-sm text-ink-soft flex-1">
+              Photo attached — we'll identify the food and suggest a real-food swap.
+            </div>
+            <button
+              type="button"
+              onClick={clearPickedImage}
+              className="btn-ghost text-sm"
+            >
+              Remove
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2 mt-4 justify-center">
           <span className="text-sm text-ink-muted self-center mr-1">Try:</span>
@@ -156,7 +200,7 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
               type="button"
               onClick={() => {
                 setQuery(ex);
-                void runSwap(ex);
+                void runSwap(ex, image);
               }}
               className="chip"
             >
@@ -164,15 +208,6 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
             </button>
           ))}
         </div>
-
-        {isLoggedIn && (
-          <CuisineChips
-            onPick={(q) => {
-              setQuery(q);
-              void runSwap(q);
-            }}
-          />
-        )}
       </form>
 
       {error && errorCode === "model_not_found" ? (

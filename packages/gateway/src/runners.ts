@@ -3,7 +3,7 @@ import {
   RecipeIterator,
   QuizSummary,
 } from "@realfoodwin/agents";
-import { callWithTool, callText } from "./llm/anthropic";
+import { callWithTool, callText, type ImageInput } from "./llm/anthropic";
 import { embed } from "./llm/voyage";
 import { loadUserContext, composePromptBlocks } from "./context";
 import { logAgentCall, calculateCost } from "./logging";
@@ -17,7 +17,8 @@ export type ClientPlatform = "ios" | "android" | "web";
 export interface SwapGeneratorRunInput {
   userId: string | null;
   productId?: string | null;
-  request: string; // typed query or product name
+  request: string; // typed query or product name (may be blank if image-only)
+  image?: ImageInput;
   clientPlatform: ClientPlatform;
   skipCache?: boolean;
 }
@@ -30,7 +31,12 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
   }
 
   const ctx = await loadUserContext(input.userId);
-  const userPrompt = composePromptBlocks(ctx, input.request);
+  const requestText = input.image
+    ? input.request.trim()
+      ? `${input.request} (the user also attached a photo of the food — identify it from the image and confirm in the swap_summary)`
+      : "Identify the food shown in the attached photo and produce a real-food swap for it."
+    : input.request;
+  const userPrompt = composePromptBlocks(ctx, requestText);
 
   const start = Date.now();
   let status: "success" | "error" = "success";
@@ -43,6 +49,7 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
       system: SwapGenerator.SYSTEM_PROMPT,
       user: userPrompt,
       tool: SwapGenerator.TOOL,
+      image: input.image,
       heliconeUserId: input.userId ?? "anonymous",
     });
     usage = result.usage;

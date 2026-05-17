@@ -53,11 +53,17 @@ export interface ToolDefinition {
   input_schema: Record<string, unknown>;
 }
 
+export interface ImageInput {
+  mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+  data: string; // base64-encoded, no data: URL prefix
+}
+
 export interface ToolCallOptions {
   tier: ModelTier;
   system: string;
   user: string;
   tool: ToolDefinition;
+  image?: ImageInput;
   maxTokens?: number;
   temperature?: number;
   heliconeUserId?: string;
@@ -75,13 +81,23 @@ export async function callWithTool(opts: ToolCallOptions): Promise<ToolCallResul
   const start = Date.now();
   const model = await resolveModel(opts.tier);
 
+  const userContent: Anthropic.MessageParam["content"] = opts.image
+    ? [
+        {
+          type: "image",
+          source: { type: "base64", media_type: opts.image.mediaType, data: opts.image.data },
+        },
+        { type: "text", text: opts.user },
+      ]
+    : opts.user;
+
   try {
     const resp = await c.messages.create({
       model,
       max_tokens: opts.maxTokens ?? 2000,
       temperature: opts.temperature ?? 0.7,
       system: opts.system,
-      messages: [{ role: "user", content: opts.user }],
+      messages: [{ role: "user", content: userContent }],
       // Anthropic SDK types are slightly mismatched against our generic schema record; cast is intentional.
       tools: [opts.tool as unknown as Anthropic.Tool],
       tool_choice: { type: "tool", name: opts.tool.name },
