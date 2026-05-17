@@ -144,11 +144,16 @@ export default async function KitchenPage() {
     <>
       <Nav />
       <main className="max-w-5xl mx-auto px-6 py-12">
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold tracking-tight">My Kitchen</h1>
-          <p className="text-ink-soft mt-2">
-            {entries.length} saved {entries.length === 1 ? "recipe" : "recipes"} · organized by meal, sortable by rating, searchable.
-          </p>
+        <header className="mb-8 flex items-start justify-between gap-6 flex-wrap">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight">My Kitchen</h1>
+            <p className="text-ink-soft mt-2">
+              {entries.length} saved {entries.length === 1 ? "recipe" : "recipes"} · organized by meal, sortable by rating, searchable.
+            </p>
+          </div>
+          <Link href="/kitchen/build" className="btn-primary">
+            <span aria-hidden>🛠</span> Build a recipe from a photo
+          </Link>
         </header>
 
         <Scorecard

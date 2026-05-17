@@ -64,6 +64,7 @@ export interface ToolCallOptions {
   user: string;
   tool: ToolDefinition;
   image?: ImageInput;
+  images?: ImageInput[]; // multi-photo input; merged with `image` if both set
   maxTokens?: number;
   temperature?: number;
   heliconeUserId?: string;
@@ -81,15 +82,22 @@ export async function callWithTool(opts: ToolCallOptions): Promise<ToolCallResul
   const start = Date.now();
   const model = await resolveModel(opts.tier);
 
-  const userContent: Anthropic.MessageParam["content"] = opts.image
-    ? [
-        {
-          type: "image",
-          source: { type: "base64", media_type: opts.image.mediaType, data: opts.image.data },
-        },
-        { type: "text", text: opts.user },
-      ]
-    : opts.user;
+  const allImages: ImageInput[] = [
+    ...(opts.image ? [opts.image] : []),
+    ...(opts.images ?? []),
+  ];
+  const userContent: Anthropic.MessageParam["content"] =
+    allImages.length > 0
+      ? [
+          ...allImages.map(
+            (img): Anthropic.ImageBlockParam => ({
+              type: "image",
+              source: { type: "base64", media_type: img.mediaType, data: img.data },
+            }),
+          ),
+          { type: "text", text: opts.user },
+        ]
+      : opts.user;
 
   try {
     const resp = await c.messages.create({

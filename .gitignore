@@ -1,7 +1,10 @@
 node_modules/
 .next/
 dist/
-build/
+/build/
+/*/build/
+/apps/*/build/
+/packages/*/build/
 .turbo/
 .env
 .env.local

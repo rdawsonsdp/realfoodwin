@@ -2,6 +2,7 @@ import {
   SwapGenerator,
   RecipeIterator,
   QuizSummary,
+  RecipeBuilder,
 } from "@realfoodwin/agents";
 import { callWithTool, callText, type ImageInput } from "./llm/anthropic";
 import { embed } from "./llm/voyage";
@@ -220,6 +221,77 @@ export async function runQuizSummary(input: QuizSummaryRunInput) {
       input_tokens: usage.input_tokens,
       output_tokens: usage.output_tokens,
       cost_usd: calculateCost("haiku", usage),
+      latency_ms: Date.now() - start,
+      status,
+      client_platform: input.clientPlatform,
+    });
+  }
+}
+
+// ---------------- Recipe Builder (multi-photo) ----------------
+
+export interface RecipeBuilderRunInput {
+  userId: string | null;
+  mode: RecipeBuilder.BuildMode;
+  images: ImageInput[];
+  notes?: string;
+  clientPlatform: ClientPlatform;
+}
+
+const MODE_HINT: Record<RecipeBuilder.BuildMode, string> = {
+  dish:
+    "Mode: dish. The attached photos show a finished food or dish. Identify it and produce a real-food recipe that recreates it.",
+  recipe:
+    "Mode: recipe. The attached photos show a handwritten or printed recipe. Transcribe and clean it up into the standard recipe shape.",
+  fridge:
+    "Mode: fridge. The attached photos show a fridge / pantry / counter. Identify the visible ingredients and design a real-food recipe that uses what's available. Suggest common pantry seasonings (salt, pepper, oil, garlic, onion, common dried herbs) even if not visible, but flag them in assumed_pantry.",
+};
+
+export async function runRecipeBuilder(input: RecipeBuilderRunInput) {
+  if (input.images.length === 0) {
+    throw new SchemaValidationError("At least one image is required");
+  }
+  const ctx = await loadUserContext(input.userId);
+  const userPrompt = composePromptBlocks(
+    ctx,
+    `${MODE_HINT[input.mode]}\n${input.notes ? `\nUser notes (hard constraints): ${input.notes}` : ""}`,
+  );
+
+  const start = Date.now();
+  let status: "success" | "error" = "success";
+  let usage = { input_tokens: 0, output_tokens: 0 };
+  let model = "";
+
+  try {
+    const result = await callWithTool({
+      tier: "sonnet",
+      system: RecipeBuilder.SYSTEM_PROMPT,
+      user: userPrompt,
+      tool: RecipeBuilder.TOOL,
+      images: input.images,
+      heliconeUserId: input.userId ?? "anonymous",
+    });
+    usage = result.usage;
+    model = result.model;
+
+    const parsed = RecipeBuilder.OutputSchema.safeParse(result.toolInput);
+    if (!parsed.success) {
+      status = "error";
+      throw new SchemaValidationError(
+        "Recipe builder output failed schema",
+        parsed.error.format(),
+      );
+    }
+    return { output: parsed.data, latencyMs: Date.now() - start };
+  } finally {
+    await logAgentCall({
+      user_id: input.userId,
+      agent_name: "recipe_builder",
+      model,
+      prompt_version: RecipeBuilder.PROMPT_VERSION,
+      input_tokens: usage.input_tokens,
+      output_tokens: usage.output_tokens,
+      cost_usd: calculateCost("sonnet", usage),
       latency_ms: Date.now() - start,
       status,
       client_platform: input.clientPlatform,
