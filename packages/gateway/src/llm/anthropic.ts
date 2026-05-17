@@ -6,7 +6,7 @@ export type ModelTier = "sonnet" | "haiku";
 // Defaults. The actual runtime model can be overridden at /admin/models without
 // a redeploy — see resolveModel() below which reads app_settings.
 export const MODELS: Record<ModelTier, string> = {
-  sonnet: "claude-sonnet-4-5",
+  sonnet: "claude-sonnet-4-6",
   haiku: "claude-haiku-4-5",
 };
 
