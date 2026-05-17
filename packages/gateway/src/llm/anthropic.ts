@@ -11,40 +11,16 @@ function rethrowAsCallError(err: unknown, model: string): never {
 
 export type ModelTier = "sonnet" | "haiku";
 
-// Defaults. The actual runtime model can be overridden at /admin/models without
-// a redeploy — see resolveModel() below which reads app_settings.
+// HARD-CODED model IDs — bypassing the app_settings lookup until the picker
+// flow is verified end-to-end. To re-enable runtime override, swap
+// resolveModel() back to the DB-backed implementation in git history.
 export const MODELS: Record<ModelTier, string> = {
   sonnet: "claude-sonnet-4-6",
   haiku: "claude-haiku-4-5-20251001",
 };
 
-import { getServiceSupabase } from "../supabase";
-
-// Cached for 60s so we don't hit the DB on every LLM call but also pick up
-// admin changes within a minute.
-const cache = { sonnet: MODELS.sonnet, haiku: MODELS.haiku, expires: 0 };
-
 async function resolveModel(tier: ModelTier): Promise<string> {
-  const now = Date.now();
-  if (now > cache.expires) {
-    try {
-      const sb = getServiceSupabase();
-      const { data } = await sb
-        .from("app_settings")
-        .select("key, value")
-        .in("key", ["model.sonnet", "model.haiku"]);
-      const map = new Map<string, string>(
-        (data ?? []).map((r: { key: string; value: string }) => [r.key, r.value]),
-      );
-      cache.sonnet = map.get("model.sonnet") ?? MODELS.sonnet;
-      cache.haiku = map.get("model.haiku") ?? MODELS.haiku;
-    } catch {
-      // Fall back to defaults if the lookup fails (e.g., during local dev
-      // before app_settings exists).
-    }
-    cache.expires = now + 60_000;
-  }
-  return cache[tier];
+  return MODELS[tier];
 }
 
 // USD per 1M tokens — directional, revise when prices change.
