@@ -127,8 +127,13 @@ export function SwapResultCard({
                   loading="lazy"
                 />
               ) : (
-                <div className="w-32 h-32 rounded-soft bg-cream grid place-items-center text-3xl font-bold text-ink-muted shadow-card">
-                  {currentOutput.title?.charAt(0).toUpperCase() ?? "?"}
+                <div className="w-32 h-32 rounded-soft bg-forest grid place-items-center text-paper shadow-card">
+                  <div className="text-center leading-tight">
+                    <div className="text-4xl mb-1" aria-hidden>◯</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest">
+                      Real Food<br />Win
+                    </div>
+                  </div>
                 </div>
               )}
             </a>
