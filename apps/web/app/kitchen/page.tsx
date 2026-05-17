@@ -145,20 +145,28 @@ export default async function KitchenPage() {
     <>
       <Nav />
       <main className="max-w-5xl mx-auto px-6 py-12">
-        <header className="mb-8 flex items-start justify-between gap-6 flex-wrap">
-          <div className="flex items-start gap-4 flex-wrap">
-            <RecentlyDeleted />
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight text-paper">My Kitchen</h1>
-              <p className="text-paper/80 mt-2">
-                {entries.length} saved {entries.length === 1 ? "recipe" : "recipes"} · organized by meal, sortable by rating, searchable.
-              </p>
-            </div>
+        <header className="mb-8 flex items-start gap-4 flex-wrap">
+          <RecentlyDeleted />
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-paper">My Kitchen</h1>
+            <p className="text-paper/80 mt-2">
+              {entries.length} saved {entries.length === 1 ? "recipe" : "recipes"} · organized by meal, sortable by rating, searchable.
+            </p>
           </div>
-          <Link href="/kitchen/build" className="btn-primary">
-            <span aria-hidden>🛠</span> Build a recipe from a photo
-          </Link>
         </header>
+
+        {/* Kitchen toolbar — square buttons; new tools land here over time. */}
+        <section className="mb-8" aria-label="Kitchen tools">
+          <p className="text-xs uppercase tracking-[0.18em] text-paper/60 mb-3">Tools</p>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 sm:flex sm:flex-wrap">
+            <ToolTile
+              href="/kitchen/build"
+              icon="🛠"
+              label="Build a recipe"
+              hint="From a photo"
+            />
+          </div>
+        </section>
 
         <Scorecard
           swaps={swapCount}
@@ -182,5 +190,30 @@ export default async function KitchenPage() {
         )}
       </main>
     </>
+  );
+}
+
+function ToolTile({
+  href,
+  icon,
+  label,
+  hint,
+}: {
+  href: string;
+  icon: string;
+  label: string;
+  hint?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="card flex flex-col items-center justify-center text-center gap-1 p-4 w-full sm:w-32 h-32 hover:shadow-warm hover:-translate-y-0.5 transition-all"
+    >
+      <div className="text-4xl leading-none" aria-hidden>
+        {icon}
+      </div>
+      <div className="text-sm font-semibold text-ink mt-1 leading-tight">{label}</div>
+      {hint && <div className="text-xs text-ink-muted leading-tight">{hint}</div>}
+    </Link>
   );
 }
