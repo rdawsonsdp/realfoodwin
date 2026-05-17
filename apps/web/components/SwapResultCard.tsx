@@ -96,7 +96,13 @@ export function SwapResultCard({
 
   if (isProduct) {
     return (
-      <article className="card overflow-hidden animate-fade-up">
+      <article
+        className={
+          "card overflow-hidden animate-fade-up relative transition-opacity " +
+          (retryingVersion ? "opacity-60" : "")
+        }
+      >
+        {retryingVersion && <RetryingOverlay />}
         <header className="p-8 bg-gradient-to-br from-honey/30 via-cream to-paper">
           <div className="flex items-center justify-between mb-4">
             <span className="badge-tuned">Tuned for you · Product pick</span>
@@ -171,9 +177,18 @@ export function SwapResultCard({
               type="button"
               onClick={onTryAnotherVersion}
               disabled={retryingVersion}
-              className="btn-secondary"
+              className="btn-secondary inline-flex items-center gap-2"
             >
-              {retryingVersion ? "Cooking another…" : "🔄 Try another version"}
+              {retryingVersion ? (
+                <>
+                  <span className="inline-block animate-spin" aria-hidden>
+                    🔄
+                  </span>
+                  Cooking another…
+                </>
+              ) : (
+                <>🔄 Try another version</>
+              )}
             </button>
           )}
         </div>
@@ -192,7 +207,13 @@ export function SwapResultCard({
     : 0;
 
   return (
-    <article className="card overflow-hidden animate-fade-up">
+    <article
+      className={
+        "card overflow-hidden animate-fade-up relative transition-opacity " +
+        (retryingVersion ? "opacity-60" : "")
+      }
+    >
+      {retryingVersion && <RetryingOverlay />}
       {/* Hero — the only thing visible until the user starts unfolding */}
       <header className="p-8 bg-gradient-to-br from-honey/30 via-cream to-paper">
         <div className="flex items-center justify-between mb-4">
@@ -224,10 +245,19 @@ export function SwapResultCard({
               <button
                 onClick={onTryAnotherVersion}
                 disabled={retryingVersion}
-                className="text-xs px-3 py-1.5 rounded-pill border border-sunrise/40 text-sunrise-700 hover:bg-sunrise/10 disabled:opacity-50 inline-flex items-center gap-1"
+                className="text-xs px-3 py-1.5 rounded-pill border border-sunrise/40 text-sunrise-700 hover:bg-sunrise/10 disabled:opacity-50 inline-flex items-center gap-1.5"
                 title="Generate a different real-food swap from the same query"
               >
-                {retryingVersion ? "Cooking another…" : "🔄 Try another version"}
+                {retryingVersion ? (
+                  <>
+                    <span className="inline-block animate-spin" aria-hidden>
+                      🔄
+                    </span>
+                    Cooking another…
+                  </>
+                ) : (
+                  <>🔄 Try another version</>
+                )}
               </button>
             </>
           )}
@@ -470,5 +500,24 @@ function Disclosure({
       </summary>
       <div className="px-8 pb-6 pt-1 animate-fade-up">{children}</div>
     </details>
+  );
+}
+
+function RetryingOverlay() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+      aria-live="polite"
+    >
+      <div className="card pointer-events-auto bg-white/95 backdrop-blur ring-1 ring-ink/10 px-5 py-4 flex items-center gap-3 shadow-card">
+        <span className="text-2xl animate-spin" aria-hidden>
+          🍳
+        </span>
+        <div>
+          <p className="font-semibold text-ink">Cooking another version…</p>
+          <p className="text-xs text-ink-muted">Asking the chef for something different.</p>
+        </div>
+      </div>
+    </div>
   );
 }
