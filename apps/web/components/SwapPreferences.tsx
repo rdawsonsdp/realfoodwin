@@ -77,9 +77,14 @@ export function SwapPreferences({ value, onChange, disabled }: Props) {
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="btn-ghost text-sm border border-ink/10 rounded-pill px-4"
+          className="inline-flex items-center gap-2 rounded-pill bg-paper text-ink ring-1 ring-ink/10 px-4 py-2 text-sm font-semibold shadow-card hover:bg-honey/60 transition-colors"
         >
-          {expanded ? "Hide preferences" : `Preferences${selectedCount ? ` (${selectedCount})` : ""}`}
+          <span aria-hidden>⚙️</span>
+          {expanded
+            ? "Hide preferences"
+            : selectedCount
+            ? `Preferences (${selectedCount})`
+            : "Show preferences"}
         </button>
       </div>
 
