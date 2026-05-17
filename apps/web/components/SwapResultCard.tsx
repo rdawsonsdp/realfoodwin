@@ -66,7 +66,7 @@ export function SwapResultCard({
   }, [result.query]);
 
   if (!currentOutput) {
-    return <div className="card p-8">No result.</div>;
+    return <div className="card p-5 md:p-8">No result.</div>;
   }
 
   async function onSave() {
@@ -103,7 +103,7 @@ export function SwapResultCard({
         }
       >
         {retryingVersion && <RetryingOverlay />}
-        <header className="p-8 bg-gradient-to-br from-honey/30 via-cream to-paper">
+        <header className="p-5 md:p-8 bg-gradient-to-br from-honey/30 via-cream to-paper">
           <div className="flex items-center justify-between mb-4">
             <span className="badge-tuned">Tuned for you · Product pick</span>
             {result.latencyMs && (
@@ -142,7 +142,7 @@ export function SwapResultCard({
                   {currentOutput.brand_name}
                 </p>
               )}
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight break-words">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight leading-tight break-words">
                 {currentOutput.title}
               </h2>
               {currentOutput.tagline && (
@@ -152,11 +152,11 @@ export function SwapResultCard({
           </div>
         </header>
 
-        <div className="px-8 py-5 bg-white border-y border-ink/5">
+        <div className="px-5 md:px-8 py-5 bg-white border-y border-ink/5">
           <p className="text-ink-soft leading-relaxed">{currentOutput.narrative}</p>
         </div>
 
-        <div className="p-8 flex flex-wrap items-center gap-3 print:hidden">
+        <div className="p-5 md:p-8 flex flex-wrap items-center gap-3 print:hidden">
           <a
             href={currentOutput.product_url ?? "#"}
             target="_blank"
@@ -220,7 +220,7 @@ export function SwapResultCard({
         <p className="text-sm text-ink-soft mb-2">
           Real-food swap for <strong>{result.query}</strong>
         </p>
-        <h2 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight leading-tight">
           {currentOutput.title}
         </h2>
         {currentOutput.tagline && (
@@ -258,7 +258,7 @@ export function SwapResultCard({
       </header>
 
       {/* Print / share actions — uses the same shape the recipe detail page does */}
-      <div className="px-8 py-3 bg-paper border-y border-ink/5 print:hidden">
+      <div className="px-5 md:px-8 py-3 bg-paper border-y border-ink/5 print:hidden">
         <RecipeActions
           recipe={{
             title: currentOutput.title,
@@ -273,7 +273,7 @@ export function SwapResultCard({
       </div>
 
       {/* Quick teaser — one line that hints there's more, encouraging the user to dig in */}
-      <div className="px-8 py-4 bg-white border-y border-ink/5">
+      <div className="px-5 md:px-8 py-4 bg-white border-y border-ink/5">
         <p className="text-sm text-ink-soft">
           {reasonsCount > 0 ? (
             <>
@@ -378,7 +378,7 @@ export function SwapResultCard({
             count={`${nutritionKeys} measure${nutritionKeys === 1 ? "" : "s"} per serving`}
             accent="bg-paper text-ink"
           >
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
               {Object.entries(currentOutput.nutrition!).map(([k, v]) =>
                 v == null ? null : (
                   <div key={k} className="p-3 rounded-soft bg-paper text-center">
@@ -417,7 +417,7 @@ export function SwapResultCard({
 
       {/* Always-visible: rating + save */}
       {result.swapId && (
-        <div className="px-8 py-5 bg-paper/40 border-t border-ink/5">
+        <div className="px-5 md:px-8 py-5 bg-paper/40 border-t border-ink/5">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <p className="text-xs uppercase tracking-[0.15em] text-sunrise-700 font-semibold mb-1">
@@ -438,7 +438,7 @@ export function SwapResultCard({
         </div>
       )}
 
-      <div className="p-6 bg-paper border-t border-ink/5">
+      <div className="p-5 md:p-6 bg-paper border-t border-ink/5">
         {saved ? (
           <button className="btn-secondary w-full" disabled>
             ✓ Saved to My Kitchen
@@ -470,7 +470,7 @@ function Disclosure({
 }) {
   return (
     <details className="group">
-      <summary className="flex items-center gap-3 px-8 py-4 cursor-pointer hover:bg-paper/60 transition-colors list-none [&::-webkit-details-marker]:hidden">
+      <summary className="flex items-center gap-3 px-5 md:px-8 py-4 min-h-[56px] cursor-pointer hover:bg-paper/60 transition-colors list-none [&::-webkit-details-marker]:hidden">
         <span
           className={`text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-pill flex-shrink-0 ${accent}`}
         >
@@ -491,7 +491,7 @@ function Disclosure({
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </summary>
-      <div className="px-8 pb-6 pt-1 animate-fade-up">{children}</div>
+      <div className="px-5 md:px-8 pb-6 pt-1 animate-fade-up">{children}</div>
     </details>
   );
 }

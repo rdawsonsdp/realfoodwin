@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -21,12 +21,24 @@ export const metadata: Metadata = {
   },
 };
 
+// viewportFit=cover so the body extends under the iOS home-indicator and our
+// safe-area utilities can claim that space. width=device-width keeps the
+// initial layout at the device pixel width.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#2D4828",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={jakarta.variable}>
-      <body>{children}</body>
+      {/* pb-20 md:pb-0 reserves room for the mobile bottom tab bar so content
+          never tucks behind the 64-72px tall tabbar on phones. */}
+      <body className="pb-20 md:pb-0">{children}</body>
     </html>
   );
 }

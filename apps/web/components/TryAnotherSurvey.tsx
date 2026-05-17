@@ -63,13 +63,16 @@ export function TryAnotherSurvey({ swapId, query, onDone, onCancel }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-ink/40 backdrop-blur-sm grid place-items-center p-4"
+      className="bottom-sheet-backdrop"
       onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
     >
       <div
-        className="card p-6 w-full max-w-lg space-y-5 animate-fade-up"
+        className="bottom-sheet p-5 md:p-6 space-y-5 animate-fade-up"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="bottom-sheet-grabber" aria-hidden />
         <header>
           <h2 className="text-xl font-bold text-ink">
             <span aria-hidden>🔄</span> What should we try next?
@@ -111,7 +114,7 @@ export function TryAnotherSurvey({ swapId, query, onDone, onCancel }: Props) {
               placeholder="Tap the mic or type — what were you actually looking for?"
               rows={3}
               disabled={submitting}
-              className="flex-1 px-3 py-2 rounded-soft border border-ink/15 bg-paper text-ink focus:outline-none focus:border-coral resize-none"
+              className="flex-1 px-3 py-2 text-base rounded-soft border border-ink/15 bg-paper text-ink focus:outline-none focus:border-coral resize-none"
             />
             <div className="self-stretch flex items-center">
               <VoiceButton

@@ -53,15 +53,15 @@ export function Scorecard({
 
   return (
     <section className="card overflow-hidden mb-10">
-      <div className="bg-gradient-to-br from-sunrise via-sunrise-600 to-coral text-white p-6 md:p-8">
-        <div className="flex items-start justify-between gap-6 flex-wrap">
-          <div>
+      <div className="bg-gradient-to-br from-sunrise via-sunrise-600 to-coral text-white p-5 md:p-8">
+        <div className="flex items-start justify-between gap-4 md:gap-6 flex-wrap">
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.2em] opacity-80">Chef level {level}</p>
-            <h2 className="text-3xl md:text-4xl font-bold mt-1">{levelTitle(level)}</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mt-1">{levelTitle(level)}</h2>
             {next && <p className="opacity-90 mt-2 text-sm">{next}</p>}
           </div>
           <div className="text-right">
-            <div className="text-5xl font-extrabold leading-none tracking-tight">{swaps}</div>
+            <div className="text-4xl md:text-5xl font-extrabold leading-none tracking-tight">{swaps}</div>
             <div className="text-xs uppercase tracking-[0.2em] opacity-80 mt-1">
               {swaps === 1 ? "swap" : "swaps"} total
             </div>
@@ -82,7 +82,9 @@ export function Scorecard({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 divide-x divide-ink/5">
+      {/* 2×2 on phones, 4-col strip on md+. Borders drawn via gap+bg so we
+          don't get an awkward divide-y on the first row. */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-ink/5">
         <Tile icon="🍳" label="Swaps" value={swaps} sub="generated" />
         <Tile icon="📖" label="Kitchen" value={saved} sub="saved" />
         <Tile icon="🏆" label="Made It" value={madeIt} sub="loved it" />
@@ -104,7 +106,7 @@ function Tile({
   sub: string;
 }) {
   return (
-    <div className="p-5 text-center">
+    <div className="p-4 md:p-5 text-center bg-paper">
       <div className="text-2xl mb-1">{icon}</div>
       <div className="text-2xl font-bold text-ink leading-none">{value}</div>
       <div className="text-xs text-ink-muted uppercase tracking-wider mt-1.5">{label}</div>

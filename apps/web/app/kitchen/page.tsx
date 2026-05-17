@@ -144,12 +144,12 @@ export default async function KitchenPage() {
   return (
     <>
       <Nav />
-      <main className="max-w-5xl mx-auto px-6 py-12">
-        <header className="mb-8 flex items-start gap-4 flex-wrap">
+      <main className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-12">
+        <header className="mb-6 md:mb-8 flex items-start gap-3 md:gap-4 flex-wrap">
           <RecentlyDeleted />
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight text-paper">My Kitchen</h1>
-            <p className="text-paper/80 mt-2">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-paper">My Kitchen</h1>
+            <p className="text-paper/80 mt-2 text-sm md:text-base">
               {entries.length} saved {entries.length === 1 ? "recipe" : "recipes"} · organized by meal, sortable by rating, searchable.
             </p>
           </div>
@@ -179,7 +179,7 @@ export default async function KitchenPage() {
         />
 
         {items.length === 0 ? (
-          <div className="card p-10 text-center">
+          <div className="card p-6 md:p-10 text-center">
             <p className="text-ink-soft mb-4">
               Your kitchen is quiet. Let's fix that — find a swap and save it.
             </p>

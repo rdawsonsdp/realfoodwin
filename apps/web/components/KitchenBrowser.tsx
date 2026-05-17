@@ -75,44 +75,50 @@ export function KitchenBrowser({ items }: { items: KitchenItem[] }) {
 
   return (
     <div className="space-y-6">
-      {/* Toolbar */}
-      <div className="card p-4 flex flex-wrap items-center gap-3">
-        <input
-          type="search"
-          placeholder="Search your kitchen…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="flex-1 min-w-[180px] p-2.5 rounded-soft bg-paper border border-ink/10 outline-none focus:border-sunrise"
-        />
-
-        <div className="flex flex-wrap gap-1">
-          {MEAL_TYPES.map((m) => (
-            <button
-              key={m}
-              onClick={() => setMeal(m)}
-              className={`px-3 py-1.5 rounded-pill text-xs font-semibold capitalize transition-colors ${
-                meal === m
-                  ? "bg-sunrise text-white"
-                  : "bg-white ring-1 ring-ink/10 text-ink-soft hover:ring-sunrise/30"
-              }`}
-            >
-              {m}
-            </button>
-          ))}
+      {/* Toolbar — search up top on phones; chips scroll horizontally to
+          avoid breaking the row at 360px. Sort dropdown sits below. */}
+      <div className="card p-3 md:p-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            placeholder="Search your kitchen…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="flex-1 min-w-[180px] px-3 py-3 text-base rounded-soft bg-paper border border-ink/10 outline-none focus:border-sunrise"
+          />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as Sort)}
+            className="px-3 py-3 text-base rounded-soft bg-white border border-ink/10 md:ml-auto"
+            aria-label="Sort"
+          >
+            {(Object.keys(SORT_LABEL) as Sort[]).map((s) => (
+              <option key={s} value={s}>
+                {SORT_LABEL[s]}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as Sort)}
-          className="px-3 py-1.5 rounded-soft text-sm bg-white border border-ink/10 ml-auto"
-          aria-label="Sort"
-        >
-          {(Object.keys(SORT_LABEL) as Sort[]).map((s) => (
-            <option key={s} value={s}>
-              {SORT_LABEL[s]}
-            </option>
-          ))}
-        </select>
+        <div className="-mx-1 overflow-x-auto scroll-row">
+          <div className="flex flex-nowrap md:flex-wrap gap-1.5 px-1 pb-0.5">
+            {MEAL_TYPES.map((m) => (
+              <button
+                key={m}
+                onClick={() => setMeal(m)}
+                className={`flex-shrink-0 px-3.5 py-2 min-h-[36px] rounded-pill text-xs font-semibold capitalize transition-colors ${
+                  meal === m
+                    ? "bg-sunrise text-white"
+                    : "bg-white ring-1 ring-ink/10 text-ink-soft hover:ring-sunrise/30"
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Results */}

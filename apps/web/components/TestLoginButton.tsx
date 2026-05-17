@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
 
@@ -35,6 +35,22 @@ export function TestLoginButton() {
     setOpen(false);
     reset();
   }
+
+  // Lock body scroll + Esc-to-close while the sheet is open. The modal/sheet
+  // mounts inside a portal-style fixed wrapper below, so we don't need React
+  // portals — just clean up on unmount.
+  useEffect(() => {
+    if (!open) return;
+    document.body.classList.add("scroll-locked");
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") close();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.classList.remove("scroll-locked");
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   function onCredsSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,7 +105,7 @@ export function TestLoginButton() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="btn-ghost text-xs px-3 py-1.5 border border-ink/10 rounded-pill"
+        className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-2 text-xs font-medium text-ink-soft hover:text-ink hover:bg-honey/40 border border-ink/10 rounded-pill transition-colors"
         title="Demo login: admin or impersonate any persona"
       >
         🧪 Test Login
@@ -97,13 +113,16 @@ export function TestLoginButton() {
 
       {open && (
         <div
-          className="fixed inset-0 z-[80] bg-ink/40 backdrop-blur-sm grid place-items-center p-4"
+          className="bottom-sheet-backdrop"
           onClick={close}
+          role="dialog"
+          aria-modal="true"
         >
           <div
-            className="card p-6 w-full max-w-md space-y-4"
+            className="bottom-sheet p-5 md:p-6 space-y-4 animate-fade-up"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="bottom-sheet-grabber" aria-hidden />
             {step === "creds" && (
               <>
                 <header>
@@ -117,9 +136,10 @@ export function TestLoginButton() {
                       type="text"
                       autoFocus
                       autoComplete="username"
+                      inputMode="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 rounded-soft border border-ink/15 bg-paper focus:outline-none focus:border-sunrise"
+                      className="mt-1 w-full px-3 py-3 text-base rounded-soft border border-ink/15 bg-paper focus:outline-none focus:border-sunrise"
                       placeholder="admin"
                     />
                   </label>
@@ -130,7 +150,7 @@ export function TestLoginButton() {
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 rounded-soft border border-ink/15 bg-paper focus:outline-none focus:border-sunrise"
+                      className="mt-1 w-full px-3 py-3 text-base rounded-soft border border-ink/15 bg-paper focus:outline-none focus:border-sunrise"
                     />
                   </label>
                   {error && <p className="text-sm text-coral">{error}</p>}
@@ -203,10 +223,12 @@ export function TestLoginButton() {
                     <div className="mt-1 flex gap-2">
                       <input
                         type="email"
+                        inputMode="email"
+                        autoComplete="email"
                         value={customEmail}
                         onChange={(e) => setCustomEmail(e.target.value)}
                         placeholder="user@example.com"
-                        className="flex-1 px-3 py-2 rounded-soft border border-ink/15 bg-paper focus:outline-none focus:border-sunrise"
+                        className="flex-1 min-w-0 px-3 py-3 text-base rounded-soft border border-ink/15 bg-paper focus:outline-none focus:border-sunrise"
                       />
                       <button
                         type="submit"

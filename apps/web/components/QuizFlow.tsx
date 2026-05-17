@@ -107,7 +107,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
         <div className="space-y-6 animate-fade-up">
           <div>
             <p className="text-sm text-paper/60">First things first 👋</p>
-            <h2 className="text-3xl font-bold tracking-tight text-paper">What should I call you?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-paper">What should I call you?</h2>
             <p className="text-paper/80 mt-2">Just your first name. I'll use it everywhere.</p>
           </div>
           <input
@@ -115,7 +115,10 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
             onChange={(e) => setA({ ...a, display_name: e.target.value })}
             placeholder="Robert"
             autoFocus
-            className="w-full p-4 text-lg rounded-soft bg-white border border-ink/10 outline-none focus:border-sunrise"
+            inputMode="text"
+            enterKeyHint="next"
+            autoComplete="given-name"
+            className="w-full px-4 py-4 text-base sm:text-lg rounded-soft bg-white border border-ink/10 outline-none focus:border-sunrise"
           />
           <div className="flex justify-end">
             <button
@@ -133,7 +136,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
         <div className="space-y-6 animate-fade-up">
           <div>
             <p className="text-sm text-paper/60">Question 1 of 5</p>
-            <h2 className="text-3xl font-bold tracking-tight text-paper">What's your eating style?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-paper">What's your eating style?</h2>
             <p className="text-paper/80 mt-2">Pick any that fit. None is fine.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -141,7 +144,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
               <button
                 key={d.value}
                 onClick={() => setA({ ...a, dietary_pattern: toggle(a.dietary_pattern, d.value) })}
-                className={`text-left px-4 py-3 rounded-soft border transition-all ${
+                className={`text-left px-4 py-3 min-h-[48px] rounded-soft border transition-all ${
                   a.dietary_pattern.includes(d.value)
                     ? "border-sunrise bg-sunrise/10 text-ink"
                     : "border-ink/10 bg-white hover:border-ink/20"
@@ -164,7 +167,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
         <div className="space-y-6 animate-fade-up">
           <div>
             <p className="text-sm text-paper/60">Question 2 of 5 · Can't skip — safety</p>
-            <h2 className="text-3xl font-bold tracking-tight text-paper">Any allergies or hard avoids?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-paper">Any allergies or hard avoids?</h2>
             <p className="text-paper/80 mt-2">We'll never put these in a recipe for you.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -172,7 +175,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
               <button
                 key={al.value}
                 onClick={() => setA({ ...a, allergies: toggle(a.allergies, al.value) })}
-                className={`text-left px-4 py-3 rounded-soft border transition-all ${
+                className={`text-left px-4 py-3 min-h-[48px] rounded-soft border transition-all ${
                   a.allergies.includes(al.value)
                     ? "border-coral bg-coral-soft/30 text-ink"
                     : "border-ink/10 bg-white hover:border-ink/20"
@@ -186,7 +189,8 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
             value={a.allergies_other}
             onChange={(e) => setA({ ...a, allergies_other: e.target.value })}
             placeholder="Other (free text)…"
-            className="w-full p-3 rounded-soft bg-white border border-ink/10 outline-none focus:border-sunrise"
+            inputMode="text"
+            className="w-full px-3 py-3.5 text-base rounded-soft bg-white border border-ink/10 outline-none focus:border-sunrise"
           />
           <p className="text-sm text-paper/60">If none, leave blank and continue.</p>
           <div className="flex justify-between">
@@ -200,7 +204,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
         <div className="space-y-6 animate-fade-up">
           <div>
             <p className="text-sm text-paper/60">Question 3 of 5</p>
-            <h2 className="text-3xl font-bold tracking-tight text-paper">Who are you cooking for?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-paper">Who are you cooking for?</h2>
           </div>
           <div className="space-y-2">
             {[
@@ -211,7 +215,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
               <button
                 key={opt.value}
                 onClick={() => setA({ ...a, household_composition: opt.value })}
-                className={`block w-full text-left px-4 py-3 rounded-soft border transition-all ${
+                className={`block w-full text-left px-4 py-3 min-h-[48px] rounded-soft border transition-all ${
                   a.household_composition === opt.value
                     ? "border-sunrise bg-sunrise/10 text-ink"
                     : "border-ink/10 bg-white hover:border-ink/20"
@@ -232,14 +236,14 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
         <div className="space-y-6 animate-fade-up">
           <div>
             <p className="text-sm text-paper/60">Question 4 of 5</p>
-            <h2 className="text-3xl font-bold tracking-tight text-paper">What's your top goal?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-paper">What's your top goal?</h2>
           </div>
           <div className="space-y-2">
             {GOALS.map((g) => (
               <button
                 key={g.value}
                 onClick={() => setA({ ...a, top_goal: g.value })}
-                className={`block w-full text-left px-4 py-3 rounded-soft border transition-all ${
+                className={`block w-full text-left px-4 py-3 min-h-[48px] rounded-soft border transition-all ${
                   a.top_goal === g.value
                     ? "border-sunrise bg-sunrise/10 text-ink"
                     : "border-ink/10 bg-white hover:border-ink/20"
@@ -260,7 +264,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
         <div className="space-y-6 animate-fade-up">
           <div>
             <p className="text-sm text-paper/60">Question 5 of 5</p>
-            <h2 className="text-3xl font-bold tracking-tight text-paper">How about your kitchen?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-paper">How about your kitchen?</h2>
           </div>
           <div>
             <label className="block text-sm font-semibold mb-2 text-paper">Weeknight time you've got</label>
@@ -273,7 +277,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
                 <button
                   key={opt.value}
                   onClick={() => setA({ ...a, weeknight_time: opt.value })}
-                  className={`px-4 py-3 rounded-soft border transition-all ${
+                  className={`px-4 py-3 min-h-[48px] rounded-soft border transition-all ${
                     a.weeknight_time === opt.value
                       ? "border-sunrise bg-sunrise/10"
                       : "border-ink/10 bg-white hover:border-ink/20"
@@ -295,7 +299,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
                 <button
                   key={opt.value}
                   onClick={() => setA({ ...a, skill_level: opt.value })}
-                  className={`px-4 py-3 rounded-soft border transition-all ${
+                  className={`px-4 py-3 min-h-[48px] rounded-soft border transition-all ${
                     a.skill_level === opt.value
                       ? "border-sunrise bg-sunrise/10"
                       : "border-ink/10 bg-white hover:border-ink/20"

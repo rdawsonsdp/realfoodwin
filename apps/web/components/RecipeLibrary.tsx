@@ -112,11 +112,13 @@ export function RecipeLibrary({ recipes, ratings }: Props) {
         <div className="card p-2 flex items-center gap-2 shadow-warm">
           <span className="pl-3 text-ink-muted">🔍</span>
           <input
-            type="text"
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search recipes, ingredients, or cravings…"
-            className="flex-1 px-3 py-3 bg-transparent outline-none text-base placeholder:text-ink-muted"
+            className="flex-1 min-w-0 px-3 py-3 bg-transparent outline-none text-base placeholder:text-ink-muted"
           />
           {query && (
             <button
@@ -130,8 +132,42 @@ export function RecipeLibrary({ recipes, ratings }: Props) {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-[200px_1fr] gap-8">
-        <aside className="md:sticky md:top-20 self-start text-paper">
+      {/* Mobile: horizontal scrolling chip rail of meal types (visible on <md).
+          Desktop: original left-side sidebar. Keeps the same toggle state. */}
+      <div className="md:hidden -mx-4 px-4">
+        <div className="flex items-center gap-2 overflow-x-auto scroll-row pb-1">
+          {allTypes.map(([t, count]) => {
+            const active = selectedTypes.has(t);
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => toggle(t)}
+                className={
+                  "flex-shrink-0 px-3.5 py-2 min-h-[40px] rounded-pill text-sm font-semibold border transition-colors " +
+                  (active
+                    ? "bg-sage text-white border-sage"
+                    : "bg-paper/95 text-ink-soft border-paper/40")
+                }
+              >
+                {t} <span className="opacity-60">· {count}</span>
+              </button>
+            );
+          })}
+          {selectedTypes.size > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedTypes(new Set())}
+              className="flex-shrink-0 px-3.5 py-2 min-h-[40px] rounded-pill text-sm font-semibold text-paper/80 hover:bg-white/10"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-[200px_1fr] md:gap-8">
+        <aside className="hidden md:block md:sticky md:top-20 self-start text-paper">
           <h2 className="font-bold text-paper mb-3 pb-2 border-b-2 border-sage">Meal Type</h2>
           <ul className="space-y-2">
             {allTypes.map(([t, count]) => (

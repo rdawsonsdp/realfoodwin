@@ -21,7 +21,7 @@ export default async function QuizPage({
   return (
     <>
       <Nav />
-      <main className="max-w-3xl mx-auto px-6 py-12 md:py-16">
+      <main className="max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-16">
         <QuizFlow nextRoute={nextRoute} />
       </main>
     </>

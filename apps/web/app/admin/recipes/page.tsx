@@ -28,7 +28,8 @@ export default async function AdminRecipesPage() {
       </div>
 
       <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
           <thead className="bg-paper text-xs uppercase tracking-wider text-ink-muted">
             <tr>
               <th className="text-left px-5 py-3">Title</th>
@@ -78,6 +79,7 @@ export default async function AdminRecipesPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

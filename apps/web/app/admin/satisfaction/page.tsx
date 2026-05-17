@@ -113,7 +113,7 @@ export default async function AdminSatisfactionPage() {
             <div className="opacity-90 text-sm pb-1">/100 weighted across {metrics.length} users</div>
           </div>
         </div>
-        <div className="grid grid-cols-4 divide-x divide-ink/5">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-ink/5">
           <Slice label="Loved" sub="of made-it" pct={overall.loved} />
           <Slice label="Avg rating" sub="across users" pct={overall.avgRating} suffix="/5" raw />
           <Slice label="Made-it rate" sub="of saves" pct={overall.madeIt} />
@@ -123,7 +123,8 @@ export default async function AdminSatisfactionPage() {
 
       <section className="card overflow-hidden">
         <h2 className="text-lg font-bold p-5 pb-3">Per-user satisfaction</h2>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[680px]">
           <thead className="bg-paper text-xs uppercase tracking-wider text-ink-muted">
             <tr>
               <th className="text-left px-5 py-3">User</th>
@@ -168,6 +169,7 @@ export default async function AdminSatisfactionPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </section>
 
       <p className="text-xs text-paper/60 italic">

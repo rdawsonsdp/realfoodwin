@@ -51,7 +51,8 @@ export default async function ReviewIndexPage() {
       </p>
 
       <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
           <thead className="bg-paper text-xs uppercase tracking-wider text-ink-muted">
             <tr>
               <th className="text-left px-5 py-3">User</th>
@@ -94,6 +95,7 @@ export default async function ReviewIndexPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

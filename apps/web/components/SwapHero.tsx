@@ -210,27 +210,33 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8 md:space-y-10">
       <div className="text-center space-y-4 max-w-2xl mx-auto">
         <div className="badge-tuned mx-auto">Replace ultra-processed food with real food</div>
-        <h1 className="text-5xl md:text-6xl font-bold leading-[1.05] tracking-tight text-paper">
+        {/* Hero copy responsive — was text-5xl on phones (48px), now starts at
+            text-3xl so it fits a 360px viewport without breaking words. */}
+        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-[1.1] md:leading-[1.05] tracking-tight text-paper">
           <span className="text-coral">Real Food</span>{" "}
           <span className="italic font-serif">Diet Swaps</span>
         </h1>
-        <p className="text-lg text-paper/80">
+        <p className="text-base md:text-lg text-paper/80">
           Type any product and press Enter — we'll show you the real food version with ingredients, nutrition comparison, and a recipe you can make today.
         </p>
       </div>
 
       <form onSubmit={onSubmit} className="max-w-2xl mx-auto">
-        <div className="card p-2 flex items-center gap-2 shadow-warm">
+        <div className="card p-2 flex items-center gap-1.5 sm:gap-2 shadow-warm">
+          {/* text-base = 16px so iOS doesn't auto-zoom on focus. inputMode=search
+              gives the right software keyboard with a "search" return key. */}
           <input
             type="text"
+            inputMode="search"
+            enterKeyHint="search"
             placeholder={image ? "Add a note (optional)…" : "Type or say 'Snickers'…"}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             disabled={loading}
-            className="flex-1 px-5 py-4 bg-transparent outline-none text-lg placeholder:text-ink-muted"
+            className="flex-1 min-w-0 px-3 sm:px-5 py-4 bg-transparent outline-none text-base sm:text-lg placeholder:text-ink-muted"
           />
           <PhotoUploadButton
             disabled={loading}
@@ -248,12 +254,20 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
               }
             }}
           />
+          {/* Icon-only on <sm to keep the row from blowing out at 360px;
+              labels resume at sm: where there's space. */}
           <button
             type="submit"
             disabled={loading || (!image && query.trim().length < 2)}
-            className="btn-primary py-3"
+            className="btn-primary px-4 sm:px-6"
+            aria-label="Find swap"
           >
-            {loading ? "Cooking…" : "Find swap →"}
+            <span className="sm:hidden text-xl leading-none" aria-hidden>
+              →
+            </span>
+            <span className="hidden sm:inline">
+              {loading ? "Cooking…" : "Find swap →"}
+            </span>
           </button>
         </div>
 
@@ -263,9 +277,9 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
             <img
               src={image.previewUrl}
               alt="Uploaded preview"
-              className="w-20 h-20 object-cover rounded-soft border border-ink/10"
+              className="w-14 h-14 sm:w-20 sm:h-20 object-cover rounded-soft border border-ink/10 flex-shrink-0"
             />
-            <div className="text-sm text-ink-soft flex-1">
+            <div className="text-xs sm:text-sm text-ink-soft flex-1 min-w-0">
               Photo attached — we'll identify the food and suggest a real-food swap.
             </div>
             <button

@@ -70,7 +70,8 @@ export default async function AdminLlmPage() {
 
       <section className="card overflow-hidden">
         <h2 className="text-lg font-bold p-5 pb-3">Spend by agent</h2>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-paper text-xs uppercase tracking-wider text-ink-muted">
             <tr>
               <th className="text-left px-5 py-3">Agent</th>
@@ -111,6 +112,7 @@ export default async function AdminLlmPage() {
             )}
           </tbody>
         </table>
+        </div>
       </section>
     </div>
   );

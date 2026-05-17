@@ -14,7 +14,7 @@ export default async function Home() {
   return (
     <>
       <Nav />
-      <main className="max-w-6xl mx-auto px-6 py-8 md:py-10">
+      <main className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10">
         {user ? (
           <>
             <CoachGreeting />
@@ -25,7 +25,7 @@ export default async function Home() {
         )}
         <SwapHero isLoggedIn={!!user} />
       </main>
-      <footer className="max-w-6xl mx-auto px-6 py-12 text-center text-sm text-paper/60">
+      <footer className="max-w-6xl mx-auto px-4 md:px-6 py-8 md:py-12 text-center text-sm text-paper/60">
         <p>Real Food Win never sells, shares, or monetizes your data.</p>
         <p className="mt-2 italic">
           Replace ultra-processed food with real food, family by family.

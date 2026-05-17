@@ -30,11 +30,11 @@ export function MagicLinkForm({ next }: { next?: string }) {
 
   if (sent) {
     return (
-      <div className="card p-8 text-center animate-fade-up">
+      <div className="card p-5 md:p-8 text-center animate-fade-up">
         <div className="w-16 h-16 mx-auto rounded-pill bg-sage-soft grid place-items-center text-3xl mb-4">
           ✉
         </div>
-        <h2 className="text-2xl font-bold mb-2">
+        <h2 className="text-xl sm:text-2xl font-bold mb-2">
           {firstName ? `Check your inbox, ${firstName}` : "Check your inbox"}
         </h2>
         <p className="text-ink-soft">
@@ -45,10 +45,10 @@ export function MagicLinkForm({ next }: { next?: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="card p-8 space-y-4 animate-fade-up">
+    <form onSubmit={onSubmit} className="card p-5 md:p-8 space-y-4 animate-fade-up">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome to the table.</h1>
-        <p className="text-ink-soft">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">Welcome to the table.</h1>
+        <p className="text-ink-soft text-sm md:text-base">
           One sign-in link, no passwords. We'll learn your kitchen as you go.
         </p>
       </div>
@@ -60,11 +60,13 @@ export function MagicLinkForm({ next }: { next?: string }) {
         <input
           id="firstName"
           type="text"
+          inputMode="text"
           autoComplete="given-name"
+          enterKeyHint="next"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
           placeholder="Robert"
-          className="w-full p-3 rounded-soft bg-paper border border-ink/10 outline-none focus:border-sunrise"
+          className="w-full px-3 py-3.5 text-base rounded-soft bg-paper border border-ink/10 outline-none focus:border-sunrise"
         />
         <p className="text-xs text-ink-muted mt-1">
           So I can greet you properly. Optional — but it makes everything warmer.
@@ -78,12 +80,14 @@ export function MagicLinkForm({ next }: { next?: string }) {
         <input
           id="email"
           type="email"
-          required
+          inputMode="email"
           autoComplete="email"
+          enterKeyHint="send"
+          required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
-          className="w-full p-3 rounded-soft bg-paper border border-ink/10 outline-none focus:border-sunrise"
+          className="w-full px-3 py-3.5 text-base rounded-soft bg-paper border border-ink/10 outline-none focus:border-sunrise"
         />
       </div>
 

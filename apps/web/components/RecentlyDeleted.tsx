@@ -52,7 +52,7 @@ export function RecentlyDeleted() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 rounded-pill bg-paper text-ink ring-1 ring-ink/10 px-4 py-2 text-sm font-semibold shadow-card hover:bg-honey/60 transition-colors"
+        className="inline-flex items-center gap-2 rounded-pill bg-paper text-ink ring-1 ring-ink/10 px-4 py-2.5 min-h-[44px] text-sm font-semibold shadow-card hover:bg-honey/60 transition-colors"
         aria-expanded={open}
         aria-haspopup="listbox"
       >
@@ -62,41 +62,52 @@ export function RecentlyDeleted() {
 
       {open && (
         <>
+          {/* Backdrop. On mobile this acts as the bottom-sheet overlay; on
+              desktop it's an invisible click-catcher for the popover. */}
           <div
-            className="fixed inset-0 z-20"
+            className="fixed inset-0 z-[60] md:bg-transparent bg-ink/40 backdrop-blur-sm md:backdrop-blur-0"
             onClick={() => setOpen(false)}
             aria-hidden
           />
-          <div className="absolute right-0 mt-2 w-80 max-w-[90vw] card p-2 z-30 max-h-96 overflow-y-auto">
-            <p className="text-xs text-ink-muted px-2 py-1.5">
-              Removed in the last 24 hours. Tap to restore.
-            </p>
-            <ul className="divide-y divide-ink/5">
-              {items.map((e) => {
-                const key = `${e.target_type}:${e.target_id}`;
-                const ago = formatAgo(e.deleted_at);
-                return (
-                  <li key={key} className="flex items-center gap-2 py-2 px-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-ink truncate" title={e.title}>
-                        {e.title}
-                      </p>
-                      <p className="text-xs text-ink-muted">
-                        {e.target_type} · {ago}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => restore(e)}
-                      disabled={busyId === key}
-                      className="btn-secondary py-1 text-xs"
-                    >
-                      {busyId === key ? "Restoring…" : "↺ Restore"}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+          {/* Mobile: bottom-sheet pinned to bottom; Desktop: popover anchored
+              to the trigger. */}
+          <div
+            className="fixed inset-x-0 bottom-0 z-[70] rounded-t-soft bg-paper text-ink shadow-warm max-h-[80vh] overflow-y-auto
+                       md:absolute md:inset-x-auto md:right-0 md:bottom-auto md:mt-2 md:w-80 md:max-w-[90vw] md:rounded-soft md:shadow-card md:ring-1 md:ring-ink/5 md:max-h-96"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          >
+            <div className="bottom-sheet-grabber" aria-hidden />
+            <div className="p-2">
+              <p className="text-xs text-ink-muted px-2 py-1.5">
+                Removed in the last 24 hours. Tap to restore.
+              </p>
+              <ul className="divide-y divide-ink/5">
+                {items.map((e) => {
+                  const key = `${e.target_type}:${e.target_id}`;
+                  const ago = formatAgo(e.deleted_at);
+                  return (
+                    <li key={key} className="flex items-center gap-2 py-2 px-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-ink truncate" title={e.title}>
+                          {e.title}
+                        </p>
+                        <p className="text-xs text-ink-muted">
+                          {e.target_type} · {ago}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => restore(e)}
+                        disabled={busyId === key}
+                        className="btn-secondary py-2 px-3 text-xs min-h-[40px]"
+                      >
+                        {busyId === key ? "Restoring…" : "↺ Restore"}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </div>
         </>
       )}

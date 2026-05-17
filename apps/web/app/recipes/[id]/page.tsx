@@ -81,21 +81,21 @@ export default async function RecipeDetailPage({
   return (
     <>
       <Nav />
-      <main className="max-w-4xl mx-auto px-6 py-10 print:py-0 print:px-0 print:max-w-full">
+      <main className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-10 print:py-0 print:px-0 print:max-w-full">
         <Link href="/recipes" className="btn-ghost-on-dark mb-6 inline-flex print:hidden">
           ← Recipes
         </Link>
 
         <article className="card overflow-hidden print:shadow-none print:border-0 print:rounded-none print:bg-white">
           {/* Hero */}
-          <header className="p-8 md:p-10 bg-gradient-to-br from-honey/30 via-cream to-paper print:bg-white">
+          <header className="p-5 md:p-10 bg-gradient-to-br from-honey/30 via-cream to-paper print:bg-white">
             <div className="flex items-start justify-between gap-6 mb-3">
               <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">
                 {recipe.meal_type ?? "Recipe"}
               </p>
               <span className="badge-tuned print:hidden">Real Food Win</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold tracking-tight leading-tight">
               {recipe.title}
             </h1>
             {meta && <p className="text-ink-soft mt-3 text-lg">{meta}</p>}
@@ -111,7 +111,7 @@ export default async function RecipeDetailPage({
           </header>
 
           {/* Rating row */}
-          <div className="px-8 md:px-10 py-5 border-t border-ink/5 bg-paper/40">
+          <div className="px-5 md:px-10 py-5 border-t border-ink/5 bg-paper/40">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <p className="text-xs uppercase tracking-[0.15em] text-sunrise-700 font-semibold mb-1.5">
@@ -135,7 +135,7 @@ export default async function RecipeDetailPage({
           </div>
 
           {/* Actions */}
-          <div className="px-8 md:px-10 py-5 border-y border-ink/5 bg-white flex flex-wrap items-center justify-between gap-4">
+          <div className="px-5 md:px-10 py-5 border-y border-ink/5 bg-white flex flex-wrap items-center justify-between gap-4">
             <RecipeActions
               recipe={{
                 title: recipe.title,
@@ -155,7 +155,7 @@ export default async function RecipeDetailPage({
           </div>
 
           {/* Body */}
-          <div className="p-8 md:p-10 grid md:grid-cols-[1fr_2fr] gap-10 print:grid-cols-[1fr_2fr] print:gap-6">
+          <div className="p-5 md:p-10 grid md:grid-cols-[1fr_2fr] gap-8 md:gap-10 print:grid-cols-[1fr_2fr] print:gap-6">
             {/* Ingredients column */}
             <section>
               <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-sunrise-700 mb-4">

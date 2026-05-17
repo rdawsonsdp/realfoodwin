@@ -136,7 +136,7 @@ export function SwapPreferences({ value, onChange, disabled }: Props) {
                     type="button"
                     onClick={() => onChange({ ...value, max_prep_minutes: t.value })}
                     className={
-                      "px-4 py-1.5 rounded-pill text-sm border transition-colors " +
+                      "px-4 py-2 min-h-[40px] rounded-pill text-sm border transition-colors " +
                       (active
                         ? "bg-sunrise text-white border-sunrise"
                         : "bg-paper text-ink-soft border-ink/15 hover:bg-cream")
@@ -161,6 +161,7 @@ export function SwapPreferences({ value, onChange, disabled }: Props) {
             <div className="space-y-2">
               <input
                 type="text"
+                inputMode="text"
                 value={mustInput}
                 onChange={(e) => setMustInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -170,7 +171,7 @@ export function SwapPreferences({ value, onChange, disabled }: Props) {
                   }
                 }}
                 placeholder="e.g. chickpeas"
-                className="w-full px-3 py-2 rounded-soft border border-ink/15 bg-paper focus:outline-none focus:border-sunrise"
+                className="w-full px-3 py-3 text-base rounded-soft border border-ink/15 bg-paper focus:outline-none focus:border-sunrise"
               />
               {value.must_include.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -233,7 +234,7 @@ function ChipGroup({
             type="button"
             onClick={() => onToggle(opt)}
             className={
-              "px-3 py-1 rounded-pill text-sm border transition-colors " +
+              "px-3.5 py-2 min-h-[40px] rounded-pill text-sm border transition-colors " +
               (active
                 ? "bg-sage text-white border-sage"
                 : "bg-paper text-ink-soft border-ink/15 hover:bg-cream")

@@ -21,7 +21,7 @@ export default async function SignInPage({
   return (
     <>
       <Nav />
-      <main className="max-w-md mx-auto px-6 py-16">
+      <main className="max-w-md mx-auto px-4 md:px-6 py-10 md:py-16">
         <MagicLinkForm next={sp.next} />
       </main>
     </>

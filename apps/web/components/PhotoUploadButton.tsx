@@ -24,7 +24,7 @@ export function PhotoUploadButton({ disabled, onPicked }: Props) {
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={disabled}
-        className="p-2 rounded-full hover:bg-sunrise/10 transition-colors disabled:opacity-40"
+        className="inline-flex items-center justify-center w-11 h-11 rounded-full hover:bg-sunrise/10 transition-colors disabled:opacity-40 text-lg"
         aria-label="Upload a photo"
         title="Upload a photo"
       >
