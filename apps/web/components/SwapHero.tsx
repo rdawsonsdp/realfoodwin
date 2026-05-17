@@ -25,6 +25,8 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [prefs, setPrefs] = useState<SwapPrefsValue>(EMPTY_PREFS);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [retryingVersion, setRetryingVersion] = useState(false);
+  const [seenTitles, setSeenTitles] = useState<string[]>([]);
   const [result, setResult] = useState<SwapResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -32,12 +34,21 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [showDismiss, setShowDismiss] = useState(false);
   const searchParams = useSearchParams();
 
-  async function runSwap(q: string, img?: PickedImage | null) {
-    setLoading(true);
+  async function runSwap(
+    q: string,
+    img?: PickedImage | null,
+    opts?: { skipCache?: boolean; avoidTitles?: string[]; isRetry?: boolean },
+  ) {
+    if (opts?.isRetry) {
+      setRetryingVersion(true);
+    } else {
+      setLoading(true);
+      setResult(null);
+      setSeenTitles([]);
+    }
     setError(null);
     setErrorCode(null);
     setBadModel(null);
-    setResult(null);
     try {
       const data = await apiPost<{
         cached: boolean;
@@ -48,15 +59,26 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
         query: q,
         preferences: prefs,
         ...(img ? { image: { media_type: img.mediaType, data: img.data } } : {}),
+        ...(opts?.skipCache ? { skip_cache: true } : {}),
+        ...(opts?.avoidTitles && opts.avoidTitles.length
+          ? { avoid_titles: opts.avoidTitles }
+          : {}),
       });
 
-      setResult({
+      const nextResult: SwapResult = {
         query: q || "(photo)",
         output: data.output,
         latencyMs: data.latency_ms,
         cached: data.cached,
         swapId: data.swap?.id ?? null,
-      });
+      };
+      setResult(nextResult);
+      const title = data.output?.title;
+      if (title) {
+        setSeenTitles((prev) =>
+          prev.includes(title) ? prev : [...prev, title].slice(-8),
+        );
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -73,7 +95,17 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
       }
     } finally {
       setLoading(false);
+      setRetryingVersion(false);
     }
+  }
+
+  async function onTryAnotherVersion() {
+    if (!result) return;
+    await runSwap(result.query === "(photo)" ? "" : result.query, image, {
+      skipCache: true,
+      avoidTitles: seenTitles,
+      isRetry: true,
+    });
   }
 
   // Restore the user's per-swap preferences from the previous visit. Stored
@@ -146,7 +178,12 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
             }}
           />
         ) : (
-          <SwapResultCard result={result} isLoggedIn={isLoggedIn} />
+          <SwapResultCard
+            result={result}
+            isLoggedIn={isLoggedIn}
+            onTryAnotherVersion={onTryAnotherVersion}
+            retryingVersion={retryingVersion}
+          />
         )}
       </div>
     );

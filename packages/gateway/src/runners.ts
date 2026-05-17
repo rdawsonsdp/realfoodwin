@@ -29,6 +29,7 @@ export interface SwapGeneratorRunInput {
   request: string; // typed query or product name (may be blank if image-only)
   image?: ImageInput;
   preferences?: SwapPreferencesInput | null;
+  avoidTitles?: string[] | null;
   clientPlatform: ClientPlatform;
   skipCache?: boolean;
 }
@@ -61,7 +62,13 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
       ? `${input.request} (the user also attached a photo of the food — identify it from the image and confirm in the swap_summary)`
       : "Identify the food shown in the attached photo and produce a real-food swap for it."
     : input.request;
-  const requestText = baseRequest + formatPreferences(input.preferences);
+  const avoidBlock =
+    input.avoidTitles && input.avoidTitles.length > 0
+      ? `\n\nThe user has already seen these swaps for the same request and wants something genuinely different — do NOT propose any of these or close variations: ${input.avoidTitles
+          .map((t) => `"${t}"`)
+          .join(", ")}.`
+      : "";
+  const requestText = baseRequest + formatPreferences(input.preferences) + avoidBlock;
   const userPrompt = composePromptBlocks(ctx, requestText);
 
   const start = Date.now();

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
 import { IterationRow } from "./IterationRow";
-import { ListenButton } from "./ListenButton";
 import { StarRating } from "./StarRating";
 import { FoodConfetti } from "./FoodConfetti";
 
@@ -44,9 +43,13 @@ const CONCERN_COLORS: Record<string, string> = {
 export function SwapResultCard({
   result,
   isLoggedIn,
+  onTryAnotherVersion,
+  retryingVersion,
 }: {
   result: SwapResult;
   isLoggedIn: boolean;
+  onTryAnotherVersion?: () => void;
+  retryingVersion?: boolean;
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -117,15 +120,19 @@ export function SwapResultCard({
             {currentOutput.recipe.difficulty && ` · ${currentOutput.recipe.difficulty}`}
             {currentOutput.recipe.meal_type && ` · ${currentOutput.recipe.meal_type}`}
           </span>
-          <span className="text-ink-muted text-xs">·</span>
-          <ListenButton
-            text={`${currentOutput.title}. ${currentOutput.tagline ?? ""}. ${currentOutput.narrative}. ${
-              reasonsCount
-                ? "Tuned for you: " + currentOutput.tuned_for_you_reasons.join(". ")
-                : ""
-            }`}
-            label="Listen"
-          />
+          {onTryAnotherVersion && (
+            <>
+              <span className="text-ink-muted text-xs">·</span>
+              <button
+                onClick={onTryAnotherVersion}
+                disabled={retryingVersion}
+                className="text-xs px-3 py-1.5 rounded-pill border border-sunrise/40 text-sunrise-700 hover:bg-sunrise/10 disabled:opacity-50 inline-flex items-center gap-1"
+                title="Generate a different real-food swap from the same query"
+              >
+                {retryingVersion ? "Cooking another…" : "🔄 Try another version"}
+              </button>
+            </>
+          )}
         </div>
       </header>
 
