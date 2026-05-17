@@ -69,9 +69,9 @@ export default async function ReviewQueuePage({ params, searchParams }: ReviewQu
     <div className="space-y-6">
       <header className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <Link href="/admin/review" className="btn-ghost mb-2">← Back</Link>
-          <h2 className="text-2xl font-bold">{user.display_name ?? user.email}</h2>
-          <p className="text-sm text-ink-muted">{user.email}</p>
+          <Link href="/admin/review" className="btn-ghost-on-dark mb-2 inline-flex">← Back</Link>
+          <h2 className="text-2xl font-bold text-paper">{user.display_name ?? user.email}</h2>
+          <p className="text-sm text-paper/70">{user.email}</p>
         </div>
         <div className="flex gap-1">
           <FilterTab href={`/admin/review/${userId}?filter=unreviewed`} active={filter === "unreviewed"}>

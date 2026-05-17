@@ -106,9 +106,9 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
       {step === 0 && (
         <div className="space-y-6 animate-fade-up">
           <div>
-            <p className="text-sm text-ink-muted">First things first 👋</p>
-            <h2 className="text-3xl font-bold tracking-tight">What should I call you?</h2>
-            <p className="text-ink-soft mt-2">Just your first name. I'll use it everywhere.</p>
+            <p className="text-sm text-paper/60">First things first 👋</p>
+            <h2 className="text-3xl font-bold tracking-tight text-paper">What should I call you?</h2>
+            <p className="text-paper/80 mt-2">Just your first name. I'll use it everywhere.</p>
           </div>
           <input
             value={a.display_name}
@@ -132,9 +132,9 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
       {step === 1 && (
         <div className="space-y-6 animate-fade-up">
           <div>
-            <p className="text-sm text-ink-muted">Question 1 of 5</p>
-            <h2 className="text-3xl font-bold tracking-tight">What's your eating style?</h2>
-            <p className="text-ink-soft mt-2">Pick any that fit. None is fine.</p>
+            <p className="text-sm text-paper/60">Question 1 of 5</p>
+            <h2 className="text-3xl font-bold tracking-tight text-paper">What's your eating style?</h2>
+            <p className="text-paper/80 mt-2">Pick any that fit. None is fine.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {DIETARY.map((d) => (
@@ -152,7 +152,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
             ))}
           </div>
           <div className="flex justify-between">
-            <button onClick={() => setStep(0)} className="btn-ghost">← Back</button>
+            <button onClick={() => setStep(0)} className="btn-ghost-on-dark">← Back</button>
             <button onClick={() => setStep(2)} className="btn-primary">
               Continue →
             </button>
@@ -163,9 +163,9 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
       {step === 2 && (
         <div className="space-y-6 animate-fade-up">
           <div>
-            <p className="text-sm text-ink-muted">Question 2 of 5 · Can't skip — safety</p>
-            <h2 className="text-3xl font-bold tracking-tight">Any allergies or hard avoids?</h2>
-            <p className="text-ink-soft mt-2">We'll never put these in a recipe for you.</p>
+            <p className="text-sm text-paper/60">Question 2 of 5 · Can't skip — safety</p>
+            <h2 className="text-3xl font-bold tracking-tight text-paper">Any allergies or hard avoids?</h2>
+            <p className="text-paper/80 mt-2">We'll never put these in a recipe for you.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {ALLERGIES.map((al) => (
@@ -188,9 +188,9 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
             placeholder="Other (free text)…"
             className="w-full p-3 rounded-soft bg-white border border-ink/10 outline-none focus:border-sunrise"
           />
-          <p className="text-sm text-ink-muted">If none, leave blank and continue.</p>
+          <p className="text-sm text-paper/60">If none, leave blank and continue.</p>
           <div className="flex justify-between">
-            <button onClick={() => setStep(1)} className="btn-ghost">← Back</button>
+            <button onClick={() => setStep(1)} className="btn-ghost-on-dark">← Back</button>
             <button onClick={() => setStep(3)} className="btn-primary">Continue →</button>
           </div>
         </div>
@@ -199,8 +199,8 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
       {step === 3 && (
         <div className="space-y-6 animate-fade-up">
           <div>
-            <p className="text-sm text-ink-muted">Question 3 of 5</p>
-            <h2 className="text-3xl font-bold tracking-tight">Who are you cooking for?</h2>
+            <p className="text-sm text-paper/60">Question 3 of 5</p>
+            <h2 className="text-3xl font-bold tracking-tight text-paper">Who are you cooking for?</h2>
           </div>
           <div className="space-y-2">
             {[
@@ -222,7 +222,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
             ))}
           </div>
           <div className="flex justify-between">
-            <button onClick={() => setStep(2)} className="btn-ghost">← Back</button>
+            <button onClick={() => setStep(2)} className="btn-ghost-on-dark">← Back</button>
             <button onClick={() => setStep(4)} className="btn-primary">Continue →</button>
           </div>
         </div>
@@ -231,8 +231,8 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
       {step === 4 && (
         <div className="space-y-6 animate-fade-up">
           <div>
-            <p className="text-sm text-ink-muted">Question 4 of 5</p>
-            <h2 className="text-3xl font-bold tracking-tight">What's your top goal?</h2>
+            <p className="text-sm text-paper/60">Question 4 of 5</p>
+            <h2 className="text-3xl font-bold tracking-tight text-paper">What's your top goal?</h2>
           </div>
           <div className="space-y-2">
             {GOALS.map((g) => (
@@ -250,7 +250,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
             ))}
           </div>
           <div className="flex justify-between">
-            <button onClick={() => setStep(3)} className="btn-ghost">← Back</button>
+            <button onClick={() => setStep(3)} className="btn-ghost-on-dark">← Back</button>
             <button onClick={() => setStep(5)} className="btn-primary">Continue →</button>
           </div>
         </div>
@@ -259,11 +259,11 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
       {step === 5 && (
         <div className="space-y-6 animate-fade-up">
           <div>
-            <p className="text-sm text-ink-muted">Question 5 of 5</p>
-            <h2 className="text-3xl font-bold tracking-tight">How about your kitchen?</h2>
+            <p className="text-sm text-paper/60">Question 5 of 5</p>
+            <h2 className="text-3xl font-bold tracking-tight text-paper">How about your kitchen?</h2>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-2">Weeknight time you've got</label>
+            <label className="block text-sm font-semibold mb-2 text-paper">Weeknight time you've got</label>
             <div className="grid grid-cols-3 gap-2">
               {[
                 { value: 15, label: "15 min" },
@@ -285,7 +285,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-2">Skill level</label>
+            <label className="block text-sm font-semibold mb-2 text-paper">Skill level</label>
             <div className="grid grid-cols-3 gap-2">
               {[
                 { value: "beginner" as const, label: "Beginner" },
@@ -307,7 +307,7 @@ export function QuizFlow({ nextRoute }: { nextRoute: string }) {
             </div>
           </div>
           <div className="flex justify-between">
-            <button onClick={() => setStep(4)} className="btn-ghost">← Back</button>
+            <button onClick={() => setStep(4)} className="btn-ghost-on-dark">← Back</button>
             <button
               onClick={submit}
               disabled={submitting}

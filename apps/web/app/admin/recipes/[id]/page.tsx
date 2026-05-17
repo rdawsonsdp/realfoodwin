@@ -29,10 +29,10 @@ export default async function EditRecipePage({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <Link href="/admin/recipes" className="btn-ghost">← Back to recipes</Link>
+        <Link href="/admin/recipes" className="btn-ghost-on-dark inline-flex">← Back to recipes</Link>
         <DeleteRecipeButton recipeId={id} title={recipe.title} />
       </div>
-      <h2 className="text-2xl font-bold">Edit recipe</h2>
+      <h2 className="text-2xl font-bold text-paper">Edit recipe</h2>
       <AdminRecipeForm
         mode="edit"
         initial={{

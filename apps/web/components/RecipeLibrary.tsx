@@ -131,12 +131,12 @@ export function RecipeLibrary({ recipes, ratings }: Props) {
       </div>
 
       <div className="grid md:grid-cols-[200px_1fr] gap-8">
-        <aside className="md:sticky md:top-20 self-start">
-          <h2 className="font-bold text-ink mb-3 pb-2 border-b-2 border-sage">Meal Type</h2>
+        <aside className="md:sticky md:top-20 self-start text-paper">
+          <h2 className="font-bold text-paper mb-3 pb-2 border-b-2 border-sage">Meal Type</h2>
           <ul className="space-y-2">
             {allTypes.map(([t, count]) => (
               <li key={t}>
-                <label className="flex items-center gap-2 cursor-pointer text-sm hover:text-ink">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-paper/80 hover:text-paper">
                   <input
                     type="checkbox"
                     checked={selectedTypes.has(t)}
@@ -144,7 +144,7 @@ export function RecipeLibrary({ recipes, ratings }: Props) {
                     className="w-4 h-4 accent-sage"
                   />
                   <span className="flex-1">{t}</span>
-                  <span className="text-xs text-ink-muted">{count}</span>
+                  <span className="text-xs text-paper/60">{count}</span>
                 </label>
               </li>
             ))}
@@ -153,7 +153,7 @@ export function RecipeLibrary({ recipes, ratings }: Props) {
             <button
               type="button"
               onClick={() => setSelectedTypes(new Set())}
-              className="btn-ghost text-xs mt-3"
+              className="btn-ghost-on-dark text-xs mt-3"
             >
               Clear filters
             </button>
@@ -161,22 +161,22 @@ export function RecipeLibrary({ recipes, ratings }: Props) {
         </aside>
 
         <section>
-          <p className="text-sm text-ink-soft mb-4">
+          <p className="text-sm text-paper/80 mb-4">
             Showing {filtered.length} recipe{filtered.length === 1 ? "" : "s"}
             {selectedTypes.size > 0 && (
-              <span className="ml-2 text-ink-muted">
+              <span className="ml-2 text-paper/60">
                 · filtered to {Array.from(selectedTypes).join(", ")}
               </span>
             )}
           </p>
 
           {grouped.length === 0 ? (
-            <p className="text-ink-muted">No recipes match the current filters.</p>
+            <p className="text-paper/70">No recipes match the current filters.</p>
           ) : (
             <div className="space-y-10">
               {grouped.map(([type, rows]) => (
                 <div key={type}>
-                  <h3 className="text-xl font-bold mb-4 tracking-tight">{type}</h3>
+                  <h3 className="text-xl font-bold mb-4 tracking-tight text-paper">{type}</h3>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                     {rows.map((r) => (
                       <RecipeCard key={r.id} r={r} rating={ratings[r.id]} />

@@ -147,8 +147,8 @@ export default async function KitchenPage() {
       <main className="max-w-5xl mx-auto px-6 py-12">
         <header className="mb-8 flex items-start justify-between gap-6 flex-wrap">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight">My Kitchen</h1>
-            <p className="text-ink-soft mt-2">
+            <h1 className="text-4xl font-bold tracking-tight text-paper">My Kitchen</h1>
+            <p className="text-paper/80 mt-2">
               {entries.length} saved {entries.length === 1 ? "recipe" : "recipes"} · organized by meal, sortable by rating, searchable.
             </p>
           </div>

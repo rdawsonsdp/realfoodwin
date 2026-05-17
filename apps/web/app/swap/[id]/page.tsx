@@ -66,7 +66,7 @@ export default async function SwapDetailPage({
     <>
       <Nav />
       <main className="max-w-4xl mx-auto px-6 py-10">
-        <Link href="/kitchen" className="btn-ghost mb-6 print:hidden">
+        <Link href="/kitchen" className="btn-ghost-on-dark mb-6 inline-flex print:hidden">
           ← Kitchen
         </Link>
         <SwapResultCard result={result} isLoggedIn={!!user} />

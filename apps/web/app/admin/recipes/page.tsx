@@ -19,7 +19,7 @@ export default async function AdminRecipesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-ink-soft text-sm">
+        <p className="text-paper/80 text-sm">
           Manage the canonical recipe library. New recipes are public to all users and feed into the Recommender / RAG.
         </p>
         <Link href="/admin/recipes/new" className="btn-primary py-2 px-4 text-sm">

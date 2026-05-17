@@ -32,16 +32,16 @@ export default async function SystemRulesPage() {
 
   return (
     <div className="space-y-6">
-      <p className="text-ink-soft text-sm">
-        Durable guardrails the agent must respect. Global rules apply to every Sonnet swap call. Profile-matched rules apply only when the user's profile satisfies the filter. Both inject as <code className="bg-cream px-1 rounded">&lt;system_rules&gt;</code> in the prompt.
+      <p className="text-paper/80 text-sm">
+        Durable guardrails the agent must respect. Global rules apply to every Sonnet swap call. Profile-matched rules apply only when the user's profile satisfies the filter. Both inject as <code className="bg-cream text-ink px-1 rounded">&lt;system_rules&gt;</code> in the prompt.
       </p>
 
       <SystemRuleForm />
 
       <section>
-        <h2 className="text-lg font-bold mb-3">Active rules ({rules.filter((r) => r.active).length})</h2>
+        <h2 className="text-lg font-bold mb-3 text-paper">Active rules ({rules.filter((r) => r.active).length})</h2>
         {rules.length === 0 ? (
-          <p className="text-ink-muted text-sm italic">
+          <p className="text-paper/70 text-sm italic">
             No rules yet. Add one above.
           </p>
         ) : (

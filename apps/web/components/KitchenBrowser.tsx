@@ -126,10 +126,10 @@ export function KitchenBrowser({ items }: { items: KitchenItem[] }) {
           {byMeal.map((g) => (
             <section key={g.key}>
               <div className="flex items-baseline justify-between mb-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-sunrise-700 capitalize">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-honey capitalize">
                   {g.key === "other" ? "Other" : g.key}
                 </h2>
-                <span className="text-xs text-ink-muted">
+                <span className="text-xs text-paper/60">
                   {g.items.length} {g.items.length === 1 ? "recipe" : "recipes"}
                 </span>
               </div>

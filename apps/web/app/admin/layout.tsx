@@ -19,9 +19,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <main className="max-w-6xl mx-auto px-6 py-10">
         <header className="mb-6">
           <p className="badge-tuned mb-3 inline-flex">Admin · demo only</p>
-          <h1 className="text-3xl font-bold tracking-tight">Real Food Win — Control Room</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-paper">Real Food Win — Control Room</h1>
         </header>
-        <nav className="flex gap-1 border-b border-ink/10 mb-8 overflow-x-auto">
+        <nav className="flex gap-1 border-b border-white/10 mb-8 overflow-x-auto">
           <AdminTab href="/admin" label="Overview" />
           <AdminTab href="/admin/personas" label="Personas" />
           <AdminTab href="/admin/intelligence" label="AI reasoning" />
@@ -42,7 +42,7 @@ function AdminTab({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="px-4 py-2.5 text-sm font-semibold text-ink-soft hover:text-ink hover:bg-honey/40 rounded-t-soft transition-colors"
+      className="px-4 py-2.5 text-sm font-semibold text-paper/70 hover:text-paper hover:bg-white/10 rounded-t-soft transition-colors"
     >
       {label}
     </Link>

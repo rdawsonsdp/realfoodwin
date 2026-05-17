@@ -54,7 +54,7 @@ export default async function PersonasAdminPage() {
 
   return (
     <div className="space-y-6">
-      <p className="text-ink-soft text-sm">
+      <p className="text-paper/80 text-sm">
         Click "Sign in as" to view that persona's personalized Kitchen and Scorecard. Currently signed in as <strong>{user?.email ?? "(no one)"}</strong>.
       </p>
 

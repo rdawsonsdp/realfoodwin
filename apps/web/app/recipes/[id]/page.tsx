@@ -82,7 +82,7 @@ export default async function RecipeDetailPage({
     <>
       <Nav />
       <main className="max-w-4xl mx-auto px-6 py-10 print:py-0 print:px-0 print:max-w-full">
-        <Link href="/recipes" className="btn-ghost mb-6 print:hidden">
+        <Link href="/recipes" className="btn-ghost-on-dark mb-6 inline-flex print:hidden">
           ← Recipes
         </Link>
 

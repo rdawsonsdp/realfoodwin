@@ -4,8 +4,8 @@ import { AdminRecipeForm } from "@/components/AdminRecipeForm";
 export default function NewRecipePage() {
   return (
     <div className="space-y-4">
-      <Link href="/admin/recipes" className="btn-ghost">← Back to recipes</Link>
-      <h2 className="text-2xl font-bold">Add a recipe</h2>
+      <Link href="/admin/recipes" className="btn-ghost-on-dark inline-flex">← Back to recipes</Link>
+      <h2 className="text-2xl font-bold text-paper">Add a recipe</h2>
       <AdminRecipeForm mode="create" />
     </div>
   );

@@ -32,7 +32,7 @@ export default async function AdminModelsPage() {
 
   return (
     <div className="space-y-6">
-      <p className="text-ink-soft text-sm">
+      <p className="text-paper/80 text-sm">
         Override which Anthropic model the gateway calls for each tier. Changes
         take effect within 60 seconds (gateway caches the resolution to keep DB
         load minimal). If the model returns 404 from Anthropic, try a different

@@ -27,8 +27,8 @@ export default async function SettingsPage() {
       <Nav />
       <main className="max-w-3xl mx-auto px-6 py-12 space-y-10">
         <header>
-          <h1 className="text-4xl font-bold tracking-tight">Account</h1>
-          <p className="text-ink-soft mt-1">Signed in as <strong>{user.email}</strong></p>
+          <h1 className="text-4xl font-bold tracking-tight text-paper">Account</h1>
+          <p className="text-paper/80 mt-1">Signed in as <strong>{user.email}</strong></p>
         </header>
 
         <section className="card p-6">
@@ -79,7 +79,7 @@ export default async function SettingsPage() {
         </section>
 
         <form action="/api/auth/signout" method="post">
-          <button type="submit" className="btn-ghost">Sign out →</button>
+          <button type="submit" className="btn-ghost-on-dark">Sign out →</button>
         </form>
       </main>
     </>

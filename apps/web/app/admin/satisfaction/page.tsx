@@ -170,7 +170,7 @@ export default async function AdminSatisfactionPage() {
         </table>
       </section>
 
-      <p className="text-xs text-ink-muted italic">
+      <p className="text-xs text-paper/60 italic">
         Score formula: 40% loved-it ratio · 30% avg rating · 20% made-it rate · 10% save rate. Missing components are skipped and weights renormalized.
       </p>
     </div>

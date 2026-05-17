@@ -53,7 +53,7 @@ export default async function AdminActivityPage() {
   return (
     <div className="grid lg:grid-cols-[2fr_1fr] gap-6">
       <section>
-        <h2 className="text-lg font-bold mb-3">Live activity</h2>
+        <h2 className="text-lg font-bold mb-3 text-paper">Live activity</h2>
         <div className="card divide-y divide-ink/5">
           {events.length === 0 ? (
             <div className="p-6 text-ink-muted text-sm">No events yet.</div>
@@ -97,7 +97,7 @@ export default async function AdminActivityPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-bold mb-3">Top queries (7d)</h2>
+        <h2 className="text-lg font-bold mb-3 text-paper">Top queries (7d)</h2>
         <div className="card p-5">
           {topQueries.length === 0 ? (
             <p className="text-ink-muted text-sm">No swaps in the last 7 days.</p>
@@ -116,7 +116,7 @@ export default async function AdminActivityPage() {
           )}
         </div>
 
-        <p className="text-xs text-ink-muted mt-4 italic">
+        <p className="text-xs text-paper/60 mt-4 italic">
           Reload to refresh. Cron-based auto-refresh comes with Phase 2.
         </p>
       </section>

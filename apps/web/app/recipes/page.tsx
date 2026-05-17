@@ -35,10 +35,10 @@ export default async function RecipesPage() {
       <Nav />
       <main className="max-w-6xl mx-auto px-6 py-12">
         <header className="mb-8 text-center">
-          <h1 className="text-5xl font-bold tracking-tight">
+          <h1 className="text-5xl font-bold tracking-tight text-paper">
             Real Food <span className="italic font-serif text-sage">Recipes</span>
           </h1>
-          <p className="text-ink-soft mt-3 max-w-2xl mx-auto">
+          <p className="text-paper/80 mt-3 max-w-2xl mx-auto">
             Simple, fast, and affordable meals that your whole family will actually want to eat — no complicated techniques or expensive superfoods required.
           </p>
         </header>

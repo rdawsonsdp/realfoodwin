@@ -25,12 +25,12 @@ export default async function AdminIntelligencePage() {
     .order("email");
 
   if (!users || users.length === 0) {
-    return <p className="text-ink-muted">No users yet.</p>;
+    return <p className="text-paper/70">No users yet.</p>;
   }
 
   return (
     <div className="space-y-6">
-      <p className="text-ink-soft text-sm">
+      <p className="text-paper/80 text-sm">
         How the Swap Generator is personalizing for each user. Profile + summary + recent ratings + admin coaching all feed into every prompt. The "Tuned for you" reasons are pulled verbatim from the latest agent output.
       </p>
 

@@ -54,10 +54,10 @@ export function FreshFinds() {
     <section className="mb-12">
       <div className="flex items-baseline justify-between mb-4">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-2">
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-2 text-paper">
             <span>🌿</span> Fresh today
           </h2>
-          <p className="text-sm text-ink-soft">
+          <p className="text-sm text-paper/70">
             Popular swaps the community is cooking — tap one to see it tuned for you.
           </p>
         </div>

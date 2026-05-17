@@ -46,7 +46,7 @@ export default async function ReviewIndexPage() {
 
   return (
     <div className="space-y-4">
-      <p className="text-ink-soft text-sm">
+      <p className="text-paper/80 text-sm">
         Rate each user's AI output. Your stars + notes feed into that user's next prompt as expert-reviewer guidance, helping the model converge on what works for them.
       </p>
 
