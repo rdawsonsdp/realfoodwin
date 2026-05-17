@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { TestLoginButton } from "./TestLoginButton";
 
 export type NavLink = {
   href: string;
@@ -122,9 +121,6 @@ export function MobileNavDrawer({ links, isLoggedIn }: Props) {
                   </Link>
                 </li>
               )}
-              <li className="px-4 pt-4">
-                <TestLoginButton />
-              </li>
             </ul>
           </div>
         </div>

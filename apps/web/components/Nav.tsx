@@ -66,8 +66,11 @@ export async function Nav() {
             </div>
           </nav>
 
-          {/* Mobile — hamburger drawer + test-login folded into it */}
+          {/* Mobile — Test Login + Sign-in CTA + hamburger drawer. Test Login
+              sits in the header (not in the drawer) so the modal pops over
+              everything without the drawer being in the way. */}
           <div className="md:hidden flex items-center gap-1">
+            <TestLoginButton />
             {!user && (
               <Link
                 href="/sign-in"
