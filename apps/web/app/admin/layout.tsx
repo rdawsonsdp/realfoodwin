@@ -32,6 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <AdminTab href="/admin/activity" label="Activity" />
           <AdminTab href="/admin/llm" label="LLM spend" />
           <AdminTab href="/admin/models" label="Models" />
+          <AdminTab href="/admin/releases" label="Releases" />
         </nav>
         {children}
       </main>
