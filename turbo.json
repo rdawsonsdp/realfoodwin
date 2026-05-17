@@ -33,6 +33,8 @@
     "RESEND_API_KEY",
     "RESEND_FROM",
     "HELICONE_API_KEY",
-    "NODE_ENV"
+    "NODE_ENV",
+    "TEST_LOGIN_PASSWORD",
+    "TEST_ADMIN_EMAIL"
   ]
 }
