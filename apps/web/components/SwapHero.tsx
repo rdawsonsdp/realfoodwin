@@ -193,13 +193,12 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
     <div className="space-y-10">
       <div className="text-center space-y-4 max-w-2xl mx-auto">
         <div className="badge-tuned mx-auto">Replace ultra-processed food with real food</div>
-        <h1 className="text-5xl md:text-6xl font-bold leading-[1.05] tracking-tight">
-          Type a junk food.
-          <br />
-          Get a <span className="text-sunrise">real-food swap.</span>
+        <h1 className="text-5xl md:text-6xl font-bold leading-[1.05] tracking-tight text-paper">
+          <span className="text-coral">Real Food</span>{" "}
+          <span className="italic font-serif">Diet Swaps</span>
         </h1>
-        <p className="text-lg text-ink-soft">
-          Complete recipe. Nutrition comparison. Ingredient analysis. Tuned to your kitchen.
+        <p className="text-lg text-paper/80">
+          Type any product and press Enter — we'll show you the real-food version with ingredients, nutrition comparison, and a recipe you can make today.
         </p>
       </div>
 

@@ -9,7 +9,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Warm Headspace-inspired palette
+        // Forest-and-coral palette — dark green canvas, cream surfaces,
+        // coral primary action. Sunrise / honey still available for
+        // accents where warmth helps.
+        forest: {
+          DEFAULT: "#2D4828",
+          50: "#EEF3EC",
+          100: "#D5E0D1",
+          200: "#A8BFA1",
+          300: "#7A9D72",
+          400: "#557E4D",
+          500: "#3F6438",
+          600: "#2D4828", // base
+          700: "#223A1E",
+          800: "#172A15",
+          900: "#0F1D0E",
+        },
         sunrise: {
           DEFAULT: "#F39B47", // primary action
           50: "#FEF6EE",

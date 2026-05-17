@@ -13,15 +13,15 @@
   }
 
   body {
-    @apply bg-paper text-ink font-sans;
+    @apply bg-forest text-paper font-sans;
     background-image:
-      radial-gradient(at 80% -10%, rgba(255, 213, 107, 0.35) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, rgba(243, 155, 71, 0.18) 0px, transparent 60%);
+      radial-gradient(at 80% -10%, rgba(255, 213, 107, 0.10) 0px, transparent 55%),
+      radial-gradient(at 0% 100%, rgba(244, 122, 106, 0.10) 0px, transparent 60%);
     background-attachment: fixed;
   }
 
   h1, h2, h3, h4 {
-    @apply text-ink tracking-tight;
+    @apply tracking-tight;
     font-feature-settings: "ss01" on;
   }
 }
@@ -53,26 +53,33 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-pill bg-sunrise px-6 py-3 text-base font-semibold text-white shadow-warm transition-all hover:bg-sunrise-600 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-pill bg-coral px-6 py-3 text-base font-semibold text-white shadow-warm transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-pill bg-white px-6 py-3 text-base font-semibold text-ink ring-1 ring-ink/10 shadow-card transition-all hover:ring-ink/20 active:scale-[0.98];
+    @apply inline-flex items-center justify-center gap-2 rounded-pill bg-paper px-6 py-3 text-base font-semibold text-ink ring-1 ring-ink/10 shadow-card transition-all hover:ring-ink/20 active:scale-[0.98];
   }
 
+  /* btn-ghost stays light-surface friendly (cream nav, white cards). For
+     placement directly on the forest body, wrap in a parent that overrides
+     to text-paper. */
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-pill px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-ink hover:bg-honey/40;
   }
 
+  .btn-ghost-on-dark {
+    @apply inline-flex items-center justify-center gap-2 rounded-pill px-4 py-2 text-sm font-medium text-paper/80 transition-colors hover:text-paper hover:bg-white/10;
+  }
+
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-pill bg-cream px-3 py-1.5 text-sm font-medium text-ink-soft ring-1 ring-sunrise/20 transition-colors hover:bg-honey hover:text-ink;
+    @apply inline-flex items-center gap-1.5 rounded-pill bg-paper px-3 py-1.5 text-sm font-medium text-ink-soft ring-1 ring-ink/10 transition-colors hover:bg-honey hover:text-ink;
   }
 
   .card {
-    @apply rounded-soft bg-white shadow-card ring-1 ring-ink/5;
+    @apply rounded-soft bg-paper text-ink shadow-card ring-1 ring-ink/5;
   }
 
   .badge-tuned {
-    @apply inline-flex items-center gap-1.5 rounded-pill bg-sunrise/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-sunrise-700 ring-1 ring-sunrise/30;
+    @apply inline-flex items-center gap-1.5 rounded-pill bg-coral/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-coral ring-1 ring-coral/30;
   }
 }

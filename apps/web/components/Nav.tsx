@@ -11,10 +11,10 @@ export async function Nav() {
   const isAdmin = isAdminRequest(user?.email ?? null);
 
   return (
-    <header className="sticky top-0 z-30 backdrop-blur-md bg-paper/80 border-b border-ink/5">
+    <header className="sticky top-0 z-30 backdrop-blur-md bg-paper/90 border-b border-ink/5 text-ink">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-soft bg-sunrise grid place-items-center text-white font-bold shadow-warm transition-transform group-hover:scale-105">
+          <div className="w-8 h-8 rounded-soft bg-forest grid place-items-center text-paper font-bold shadow-warm transition-transform group-hover:scale-105">
             ◯
           </div>
           <span className="font-bold text-lg tracking-tight">Real Food Win</span>

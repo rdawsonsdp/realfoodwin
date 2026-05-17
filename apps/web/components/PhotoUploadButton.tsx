@@ -34,7 +34,8 @@ export function PhotoUploadButton({ disabled, onPicked }: Props) {
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
+        /* Omitting `capture` so the mobile native picker offers both
+           "Take Photo" and "Photo Library" rather than forcing the camera. */
         className="hidden"
         onChange={async (e) => {
           const file = e.target.files?.[0];
