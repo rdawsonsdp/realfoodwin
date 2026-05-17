@@ -9,6 +9,7 @@ import { CookingAnimation } from "./CookingAnimation";
 import { VoiceButton } from "./VoiceButton";
 import { PhotoUploadButton } from "./PhotoUploadButton";
 import { SwapPreferences, EMPTY_PREFS, type SwapPrefsValue } from "./SwapPreferences";
+import { TryAnotherSurvey } from "./TryAnotherSurvey";
 import { DismissSurvey } from "./DismissSurvey";
 
 const EXAMPLES = ["Snickers", "Doritos", "Oreos", "Big Mac", "Pop-Tarts"];
@@ -32,6 +33,7 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [badModel, setBadModel] = useState<string | null>(null);
   const [showDismiss, setShowDismiss] = useState(false);
+  const [showTrySurvey, setShowTrySurvey] = useState(false);
   const searchParams = useSearchParams();
 
   async function runSwap(
@@ -171,16 +173,10 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <button
-            onClick={backToSwapScreen}
+            onClick={() => setShowTrySurvey(true)}
             className="inline-flex items-center gap-2 rounded-pill bg-paper text-ink ring-1 ring-ink/10 px-4 py-2 text-sm font-semibold shadow-card hover:bg-honey/60 transition-colors"
           >
             ← Try another swap
-          </button>
-          <button
-            onClick={() => setShowDismiss((v) => !v)}
-            className="btn-ghost-on-dark text-sm"
-          >
-            {showDismiss ? "Hide feedback" : "Not for me — give feedback"}
           </button>
         </div>
         {showDismiss ? (
@@ -195,6 +191,17 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
             isLoggedIn={isLoggedIn}
             onTryAnotherVersion={onTryAnotherVersion}
             retryingVersion={retryingVersion}
+          />
+        )}
+        {showTrySurvey && (
+          <TryAnotherSurvey
+            swapId={result.swapId}
+            query={result.query}
+            onDone={() => {
+              setShowTrySurvey(false);
+              backToSwapScreen();
+            }}
+            onCancel={() => setShowTrySurvey(false)}
           />
         )}
       </div>
