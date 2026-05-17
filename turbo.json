@@ -35,6 +35,10 @@
     "HELICONE_API_KEY",
     "NODE_ENV",
     "TEST_LOGIN_PASSWORD",
-    "TEST_ADMIN_EMAIL"
+    "TEST_ADMIN_EMAIL",
+    "VERCEL",
+    "VERCEL_*",
+    "NEXT_PUBLIC_VERCEL_*",
+    "CI"
   ]
 }
