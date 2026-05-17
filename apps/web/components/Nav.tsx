@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { isAdminEmail } from "@/lib/admin";
+import { TestLoginButton } from "./TestLoginButton";
 
 export async function Nav() {
   const supabase = createSupabaseServer();
@@ -38,6 +39,9 @@ export async function Nav() {
           ) : (
             <Link href="/sign-in" className="btn-secondary ml-2 py-2">Sign in</Link>
           )}
+          <div className="ml-2 pl-2 border-l border-ink/10">
+            <TestLoginButton />
+          </div>
         </nav>
       </div>
     </header>

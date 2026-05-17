@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
 import { IterationRow } from "./IterationRow";
@@ -53,6 +53,10 @@ export function SwapResultCard({
   const [saved, setSaved] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [currentOutput, setCurrentOutput] = useState(result.output);
+
+  useEffect(() => {
+    if (result.output) setCelebrate(true);
+  }, [result.query]);
 
   if (!currentOutput) {
     return <div className="card p-8">No result.</div>;
