@@ -18,14 +18,16 @@ export function TestLoginButton() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("creds");
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [customEmail, setCustomEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
     setStep("creds");
-    setUsername("");
+    // Pre-fill admin so the path is explicit — user only needs to type the
+    // password and tap Continue.
+    setUsername("admin");
     setPassword("");
     setCustomEmail("");
     setError(null);
@@ -113,16 +115,15 @@ export function TestLoginButton() {
 
       {open && (
         <div
-          className="bottom-sheet-backdrop"
+          className="fixed inset-0 z-[90] bg-ink/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
           onClick={close}
           role="dialog"
           aria-modal="true"
         >
           <div
-            className="bottom-sheet p-5 md:p-6 space-y-4 animate-fade-up"
+            className="card w-full max-w-md p-5 md:p-6 space-y-4 animate-fade-up max-h-[calc(100vh-2rem)] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bottom-sheet-grabber" aria-hidden />
             {step === "creds" && (
               <>
                 <header>
