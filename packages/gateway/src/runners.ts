@@ -14,13 +14,38 @@ export type ClientPlatform = "ios" | "android" | "web";
 
 // ---------------- Swap Generator ----------------
 
+export interface SwapPreferencesInput {
+  goals?: ("recipe" | "product")[];
+  dietary_styles?: string[];
+  allergens?: string[];
+  max_prep_minutes?: number | null;
+  prioritize?: string[];
+  must_include?: string[];
+}
+
 export interface SwapGeneratorRunInput {
   userId: string | null;
   productId?: string | null;
   request: string; // typed query or product name (may be blank if image-only)
   image?: ImageInput;
+  preferences?: SwapPreferencesInput | null;
   clientPlatform: ClientPlatform;
   skipCache?: boolean;
+}
+
+function formatPreferences(p: SwapPreferencesInput | null | undefined): string {
+  if (!p) return "";
+  const lines: string[] = [];
+  if (p.goals && p.goals.length && p.goals.length < 2) {
+    lines.push(`Goal: ${p.goals[0] === "recipe" ? "a real-food recipe" : "a real-food product they can buy"}`);
+  }
+  if (p.dietary_styles?.length) lines.push(`Dietary style: ${p.dietary_styles.join(", ")}`);
+  if (p.allergens?.length) lines.push(`Must AVOID (allergens): ${p.allergens.join(", ")}`);
+  if (p.max_prep_minutes != null) lines.push(`Max prep time: ${p.max_prep_minutes} minutes`);
+  if (p.prioritize?.length) lines.push(`Prioritize: ${p.prioritize.join(", ")}`);
+  if (p.must_include?.length) lines.push(`Must include: ${p.must_include.join(", ")}`);
+  if (!lines.length) return "";
+  return `\n\nUser preferences for this swap (treat as hard constraints):\n- ${lines.join("\n- ")}`;
 }
 
 export async function runSwapGenerator(input: SwapGeneratorRunInput) {
@@ -31,11 +56,12 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
   }
 
   const ctx = await loadUserContext(input.userId);
-  const requestText = input.image
+  const baseRequest = input.image
     ? input.request.trim()
       ? `${input.request} (the user also attached a photo of the food — identify it from the image and confirm in the swap_summary)`
       : "Identify the food shown in the attached photo and produce a real-food swap for it."
     : input.request;
+  const requestText = baseRequest + formatPreferences(input.preferences);
   const userPrompt = composePromptBlocks(ctx, requestText);
 
   const start = Date.now();

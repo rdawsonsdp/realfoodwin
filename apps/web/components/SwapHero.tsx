@@ -8,6 +8,7 @@ import { SwapResultCard, type SwapResult } from "./SwapResultCard";
 import { CookingAnimation } from "./CookingAnimation";
 import { VoiceButton } from "./VoiceButton";
 import { PhotoUploadButton } from "./PhotoUploadButton";
+import { SwapPreferences, EMPTY_PREFS, type SwapPrefsValue } from "./SwapPreferences";
 import { DismissSurvey } from "./DismissSurvey";
 
 const EXAMPLES = ["Snickers", "Doritos", "Oreos", "Big Mac", "Pop-Tarts"];
@@ -21,6 +22,7 @@ interface PickedImage {
 export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [query, setQuery] = useState("");
   const [image, setImage] = useState<PickedImage | null>(null);
+  const [prefs, setPrefs] = useState<SwapPrefsValue>(EMPTY_PREFS);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SwapResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
         latency_ms: number | null;
       }>("/api/swap", {
         query: q,
+        preferences: prefs,
         ...(img ? { image: { media_type: img.mediaType, data: img.data } } : {}),
       });
 
@@ -191,6 +194,8 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
             </button>
           </div>
         )}
+
+        <SwapPreferences value={prefs} onChange={setPrefs} disabled={loading} />
 
         <div className="flex flex-wrap gap-2 mt-4 justify-center">
           <span className="text-sm text-ink-muted self-center mr-1">Try:</span>
