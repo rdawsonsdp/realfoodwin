@@ -285,33 +285,30 @@ export function SwapResultCard({
         {currentOutput.tagline && (
           <p className="text-lg text-ink-soft mt-3">{currentOutput.tagline}</p>
         )}
-        <div className="mt-5 flex items-center gap-2 flex-wrap">
+        <div className="mt-5 flex items-center gap-3 flex-wrap">
           <span className="text-xs text-ink-muted">
             {currentOutput.recipe.time_min} min
             {currentOutput.recipe.difficulty && ` · ${currentOutput.recipe.difficulty}`}
             {currentOutput.recipe.meal_type && ` · ${currentOutput.recipe.meal_type}`}
           </span>
           {onTryAnotherVersion && (
-            <>
-              <span className="text-ink-muted text-xs">·</span>
-              <button
-                onClick={() => onTryAnotherVersion()}
-                disabled={retryingVersion}
-                className="text-xs px-3 py-1.5 rounded-pill border border-sunrise/40 text-sunrise-700 hover:bg-sunrise/10 disabled:opacity-50 inline-flex items-center gap-1.5"
-                title="Generate a different real-food swap from the same query"
-              >
-                {retryingVersion ? (
-                  <>
-                    <span className="inline-block animate-spin" aria-hidden>
-                      🔄
-                    </span>
-                    Cooking another…
-                  </>
-                ) : (
-                  <>🔄 Try another version</>
-                )}
-              </button>
-            </>
+            <button
+              onClick={() => onTryAnotherVersion()}
+              disabled={retryingVersion}
+              className="text-sm font-semibold px-4 py-2 rounded-pill bg-coral text-white shadow-warm hover:brightness-95 active:scale-[0.98] disabled:opacity-60 transition-all inline-flex items-center gap-1.5"
+              title="Generate a different real-food swap from the same query"
+            >
+              {retryingVersion ? (
+                <>
+                  <span className="inline-block animate-spin" aria-hidden>
+                    🔄
+                  </span>
+                  Cooking another…
+                </>
+              ) : (
+                <>🔄 Try another version</>
+              )}
+            </button>
           )}
         </div>
       </header>

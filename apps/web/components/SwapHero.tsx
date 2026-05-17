@@ -9,7 +9,6 @@ import { CookingAnimation } from "./CookingAnimation";
 import { VoiceButton } from "./VoiceButton";
 import { PhotoUploadButton } from "./PhotoUploadButton";
 import { SwapPreferences, EMPTY_PREFS, type SwapPrefsValue } from "./SwapPreferences";
-import { TryAnotherSurvey } from "./TryAnotherSurvey";
 import { DismissSurvey } from "./DismissSurvey";
 
 const EXAMPLES = ["Snickers", "Doritos", "Oreos", "Big Mac", "Pop-Tarts"];
@@ -33,7 +32,6 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [badModel, setBadModel] = useState<string | null>(null);
   const [showDismiss, setShowDismiss] = useState(false);
-  const [showTrySurvey, setShowTrySurvey] = useState(false);
   const searchParams = useSearchParams();
 
   async function runSwap(
@@ -178,15 +176,6 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   if (result) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <button
-            onClick={() => setShowTrySurvey(true)}
-            className="inline-flex items-center gap-2 rounded-pill bg-coral text-white px-5 py-2.5 text-sm font-semibold shadow-warm hover:brightness-95 active:scale-[0.98] transition-all"
-            aria-label="Try again with a different swap"
-          >
-            <span aria-hidden>🔄</span> Try again?
-          </button>
-        </div>
         {showDismiss ? (
           <DismissSurvey
             swapId={result.swapId}
@@ -199,24 +188,6 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
             isLoggedIn={isLoggedIn}
             onTryAnotherVersion={onTryAnotherVersion}
             retryingVersion={retryingVersion}
-          />
-        )}
-        {showTrySurvey && (
-          <TryAnotherSurvey
-            swapId={result.swapId}
-            query={result.query}
-            onDone={({ reason, custom }) => {
-              setShowTrySurvey(false);
-              // Compose a one-line feedback string the prompt can ingest.
-              const feedback = [
-                reason && reason !== "skip" ? reason.replace(/-/g, " ") : null,
-                custom || null,
-              ]
-                .filter(Boolean)
-                .join(" — ");
-              void onTryAnotherVersion(feedback || undefined);
-            }}
-            onCancel={() => setShowTrySurvey(false)}
           />
         )}
       </div>

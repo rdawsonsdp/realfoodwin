@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
+import { ProfileEditor, type ProfileEditorValue } from "@/components/ProfileEditor";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
@@ -31,30 +32,27 @@ export default async function SettingsPage() {
           <p className="text-paper/80 mt-1">Signed in as <strong>{user.email}</strong></p>
         </header>
 
-        <section className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">Your profile</h2>
-            <Link href="/quiz" className="btn-secondary py-2">Re-do quiz</Link>
-          </div>
-          {profile ? (
-            <dl className="grid grid-cols-2 gap-y-3 text-sm">
-              <dt className="text-ink-muted">Dietary pattern</dt>
-              <dd>{profile.dietary_pattern?.join(", ") || "—"}</dd>
-              <dt className="text-ink-muted">Allergies</dt>
-              <dd>{profile.allergies?.join(", ") || "—"}</dd>
-              <dt className="text-ink-muted">Cooking for</dt>
-              <dd>{profile.household_composition ?? "—"}</dd>
-              <dt className="text-ink-muted">Top goal</dt>
-              <dd>{profile.top_goal ?? "—"}</dd>
-              <dt className="text-ink-muted">Weeknight time</dt>
-              <dd>{profile.weeknight_time ? `${profile.weeknight_time} min` : "—"}</dd>
-              <dt className="text-ink-muted">Skill level</dt>
-              <dd>{profile.skill_level ?? "—"}</dd>
-            </dl>
-          ) : (
-            <p className="text-ink-muted">No profile yet — <Link href="/quiz" className="text-sunrise underline">take the quiz</Link>.</p>
-          )}
-        </section>
+        {profile ? (
+          <ProfileEditor
+            initial={{
+              dietary_pattern: profile.dietary_pattern ?? [],
+              allergies: profile.allergies ?? [],
+              allergies_other:
+                (profile.extra as { allergies_other?: string | null } | null)?.allergies_other ?? "",
+              household_composition: profile.household_composition ?? null,
+              top_goal: profile.top_goal ?? null,
+              weeknight_time: profile.weeknight_time ?? null,
+              skill_level: (profile.skill_level as ProfileEditorValue["skill_level"]) ?? null,
+            }}
+          />
+        ) : (
+          <section className="card p-6">
+            <h2 className="text-xl font-bold mb-2">Your profile</h2>
+            <p className="text-ink-muted">
+              No profile yet — <Link href="/quiz" className="text-sunrise underline">take the quiz</Link>.
+            </p>
+          </section>
+        )}
 
         {summary?.summary_text && (
           <section className="card p-6">
