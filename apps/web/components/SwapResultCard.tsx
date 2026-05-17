@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
 import { IterationRow } from "./IterationRow";
+import { RecipeActions } from "./RecipeActions";
 import { StarRating } from "./StarRating";
 import { FoodConfetti } from "./FoodConfetti";
 
@@ -135,6 +136,21 @@ export function SwapResultCard({
           )}
         </div>
       </header>
+
+      {/* Print / share actions — uses the same shape the recipe detail page does */}
+      <div className="px-8 py-3 bg-paper border-y border-ink/5 print:hidden">
+        <RecipeActions
+          recipe={{
+            title: currentOutput.title,
+            ingredients: currentOutput.recipe.ingredients,
+            steps: currentOutput.recipe.steps,
+            time_min: currentOutput.recipe.time_min,
+            difficulty: currentOutput.recipe.difficulty ?? null,
+            meal_type: currentOutput.recipe.meal_type ?? null,
+          }}
+          shareUrl={result.swapId ? `/swap/${result.swapId}` : undefined}
+        />
+      </div>
 
       {/* Quick teaser — one line that hints there's more, encouraging the user to dig in */}
       <div className="px-8 py-4 bg-white border-y border-ink/5">

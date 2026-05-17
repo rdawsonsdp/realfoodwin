@@ -184,6 +184,7 @@ function Grid({ items }: { items: KitchenItem[] }) {
               targetType={entry.target_type}
               targetId={entry.target_id}
               targetLabel={entry.title}
+              entryId={entry.id}
               initialMadeIt={entry.made_it}
               initialStars={entry.rating}
             />

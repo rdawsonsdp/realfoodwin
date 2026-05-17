@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiPost } from "@/lib/api";
+import { apiDelete, apiPost } from "@/lib/api";
 import { FoodConfetti } from "./FoodConfetti";
 
 interface Props {
   targetType: "swap" | "recipe" | "variant";
   targetId: string;
   targetLabel: string;
+  entryId: string;
   initialMadeIt: boolean;
   initialStars: number | null;
 }
@@ -20,6 +21,7 @@ export function KitchenCardActions({
   targetType,
   targetId,
   targetLabel,
+  entryId,
   initialMadeIt,
   initialStars,
 }: Props) {
@@ -29,6 +31,44 @@ export function KitchenCardActions({
   const [hover, setHover] = useState(0);
   const [busy, setBusy] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
+  const [removed, setRemoved] = useState(false);
+  const [undoVisible, setUndoVisible] = useState(false);
+
+  async function onRemove(e: React.MouseEvent) {
+    stop(e);
+    if (busy) return;
+    if (!window.confirm(`Remove "${targetLabel}" from your kitchen?`)) return;
+    setBusy(true);
+    try {
+      await apiDelete("/api/kitchen", { entry_id: entryId });
+      setRemoved(true);
+      setUndoVisible(true);
+      window.setTimeout(() => setUndoVisible(false), 8000);
+      router.refresh();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onUndo(e: React.MouseEvent) {
+    stop(e);
+    if (busy) return;
+    setBusy(true);
+    try {
+      await apiPost("/api/kitchen", { [`${targetType}_id`]: targetId });
+      setRemoved(false);
+      setUndoVisible(false);
+      router.refresh();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function stop(e: React.MouseEvent) {
     e.preventDefault();
@@ -83,6 +123,27 @@ export function KitchenCardActions({
 
   const display = hover || stars;
 
+  if (removed) {
+    return (
+      <div
+        className="flex items-center gap-3 mt-3 pt-3 border-t border-ink/5 text-sm text-ink-soft"
+        onClick={stop}
+      >
+        <span>Removed.</span>
+        {undoVisible && (
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={busy}
+            className="btn-secondary py-1 text-xs"
+          >
+            ↺ Undo
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className="flex items-center gap-3 mt-3 pt-3 border-t border-ink/5"
@@ -129,6 +190,17 @@ export function KitchenCardActions({
           <span className="text-xs text-ink-muted ml-1">{stars}/5</span>
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={busy}
+        className="ml-auto text-xs text-ink-muted hover:text-coral transition-colors px-2 py-1"
+        title="Remove from kitchen"
+        aria-label="Remove from kitchen"
+      >
+        🗑 Remove
+      </button>
 
       <FoodConfetti active={celebrate} onDone={() => setCelebrate(false)} />
     </div>

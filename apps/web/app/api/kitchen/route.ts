@@ -93,3 +93,59 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, data: { entry: data } });
 }
+
+const DeleteSchema = z
+  .object({
+    entry_id: z.string().uuid().optional(),
+    recipe_id: z.string().uuid().optional(),
+    swap_id: z.string().uuid().optional(),
+    variant_id: z.string().uuid().optional(),
+  })
+  .refine(
+    (v) =>
+      [v.entry_id, v.recipe_id, v.swap_id, v.variant_id].filter(Boolean).length === 1,
+    { message: "Provide exactly one of entry_id, recipe_id, swap_id, or variant_id" },
+  );
+
+export async function DELETE(req: Request) {
+  const body = await req.json().catch(() => null);
+  const parsed = DeleteSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: { code: "validation_error", details: parsed.error.format() } },
+      { status: 400 },
+    );
+  }
+
+  const supabase = createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: { code: "unauthenticated" } }, { status: 401 });
+  }
+
+  let q = supabase
+    .from("recipe_box_entries")
+    .delete({ count: "exact" })
+    .eq("user_id", user.id);
+  if (parsed.data.entry_id) q = q.eq("id", parsed.data.entry_id);
+  else if (parsed.data.recipe_id) q = q.eq("recipe_id", parsed.data.recipe_id);
+  else if (parsed.data.swap_id) q = q.eq("swap_id", parsed.data.swap_id);
+  else if (parsed.data.variant_id) q = q.eq("variant_id", parsed.data.variant_id);
+
+  const { error, count } = await q;
+  if (error) {
+    return NextResponse.json(
+      { error: { code: "kitchen_delete_failed", message: error.message } },
+      { status: 500 },
+    );
+  }
+  if (!count) {
+    return NextResponse.json(
+      { error: { code: "not_found", message: "No matching kitchen entry." } },
+      { status: 404 },
+    );
+  }
+  return NextResponse.json({ ok: true, data: { removed: count } });
+}

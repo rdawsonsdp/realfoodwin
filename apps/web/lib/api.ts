@@ -43,3 +43,17 @@ export async function apiGet<T = unknown>(path: string): Promise<T> {
   }
   return data.data as T;
 }
+
+export async function apiDelete<T = unknown>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "DELETE",
+    headers: { "content-type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    cache: "no-store",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data?.error) {
+    throw toApiError(res, data);
+  }
+  return data.data as T;
+}

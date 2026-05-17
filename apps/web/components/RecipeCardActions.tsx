@@ -63,6 +63,13 @@ export function RecipeCardActions({ recipeId, title, meta }: Props) {
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   }
 
+  function doPrint(e: React.MouseEvent) {
+    stop(e);
+    // Open the recipe in a new tab so the user prints the full recipe, not
+    // the library grid.
+    window.open(`/recipes/${recipeId}#print`, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div
       className="flex items-center gap-1 print:hidden"
@@ -70,6 +77,11 @@ export function RecipeCardActions({ recipeId, title, meta }: Props) {
       role="group"
       aria-label="Share recipe"
     >
+      <IconButton onClick={doPrint} title="Open and print" label="Print">
+        <polyline points="6 9 6 2 18 2 18 9" />
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+        <rect x="6" y="14" width="12" height="8" />
+      </IconButton>
       <IconButton onClick={doSms} title="Text this recipe" label="Text">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </IconButton>
