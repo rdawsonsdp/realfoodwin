@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { requireEnv } from "@/lib/env";
 import { ModelSelector } from "@/components/ModelSelector";
+import { AnthropicModelProbe } from "@/components/AnthropicModelProbe";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,8 @@ export default async function AdminModelsPage() {
         sonnetUpdated={sonnetUpdated ?? null}
         haikuUpdated={haikuUpdated ?? null}
       />
+
+      <AnthropicModelProbe />
 
       <section className="card p-5 text-sm space-y-2">
         <h3 className="font-bold mb-1">Reference: known model IDs</h3>
