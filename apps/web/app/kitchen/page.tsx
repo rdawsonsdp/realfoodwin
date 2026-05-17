@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Scorecard } from "@/components/Scorecard";
 import { KitchenBrowser, type KitchenItem } from "@/components/KitchenBrowser";
+import { RecentlyDeleted } from "@/components/RecentlyDeleted";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
@@ -151,9 +152,12 @@ export default async function KitchenPage() {
               {entries.length} saved {entries.length === 1 ? "recipe" : "recipes"} · organized by meal, sortable by rating, searchable.
             </p>
           </div>
-          <Link href="/kitchen/build" className="btn-primary">
-            <span aria-hidden>🛠</span> Build a recipe from a photo
-          </Link>
+          <div className="flex items-center gap-3 flex-wrap">
+            <RecentlyDeleted />
+            <Link href="/kitchen/build" className="btn-primary">
+              <span aria-hidden>🛠</span> Build a recipe from a photo
+            </Link>
+          </div>
         </header>
 
         <Scorecard

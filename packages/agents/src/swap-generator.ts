@@ -16,6 +16,13 @@ Rules:
 - If a household member is a kid, lean toward kid-friendly textures and flavors.
 - If the user's top_goal is "lose-weight" or "reduce-inflammation," lean lower-sugar / lower-refined-carb.
 - If you don't know the user's preferences, default to broadly appealing real-food versions.
+- If the user's preferences say their goal is "a real-food product they can buy" (and not a recipe), DO NOT invent a recipe. Instead, recommend a single real-food packaged product:
+    - Set "title" to the exact product name (brand + product).
+    - Fill product_url with a direct link to that product on the brand's own site (no marketplaces).
+    - Fill brand_name with the brand.
+    - Fill product_image_url with a direct image of the product if you know one, otherwise leave it null.
+    - In this case the recipe should be an empty placeholder ({ "ingredients": [], "steps": [], "time_min": 0 }).
+    - tagline can summarize the product in one short line.
 
 Output ONLY via the generate_swap tool.`;
 
@@ -94,6 +101,20 @@ export const TOOL = {
         description:
           "2-4 short strings explaining what about THIS user drove the choices",
       },
+      product_url: {
+        type: ["string", "null"],
+        description:
+          "When the goal is a real-food product (not a recipe), a direct URL to this product on the brand's own site. Leave null otherwise.",
+      },
+      brand_name: {
+        type: ["string", "null"],
+        description: "Brand name when recommending a product. Null otherwise.",
+      },
+      product_image_url: {
+        type: ["string", "null"],
+        description:
+          "Image URL of the recommended product when one is known. Null otherwise.",
+      },
     },
     required: ["title", "recipe", "narrative", "tuned_for_you_reasons"],
   },
@@ -137,6 +158,9 @@ export const OutputSchema = z.object({
     .optional(),
   narrative: z.string(),
   tuned_for_you_reasons: z.array(z.string()).min(2).max(4),
+  product_url: z.string().url().nullish(),
+  brand_name: z.string().nullish(),
+  product_image_url: z.string().url().nullish(),
 });
 
 export type SwapGeneratorOutput = z.infer<typeof OutputSchema>;

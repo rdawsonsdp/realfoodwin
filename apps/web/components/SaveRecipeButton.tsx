@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiDelete, apiPost } from "@/lib/api";
+import { pushRecentlyDeleted, removeRecentlyDeleted } from "@/lib/recentlyDeleted";
 
 interface Props {
   recipeId: string;
@@ -27,6 +28,7 @@ export function SaveRecipeButton({ recipeId, isLoggedIn, alreadySaved }: Props) 
     setError(null);
     try {
       await apiPost("/api/kitchen", { recipe_id: recipeId });
+      removeRecentlyDeleted("recipe", recipeId);
       setStatus("saved");
       setUndoVisible(false);
     } catch (err) {
@@ -40,6 +42,10 @@ export function SaveRecipeButton({ recipeId, isLoggedIn, alreadySaved }: Props) 
     setError(null);
     try {
       await apiDelete("/api/kitchen", { recipe_id: recipeId });
+      // Save into the per-browser recovery cache so the user can still get it
+      // back from "Recently deleted" on the kitchen page after the inline
+      // undo affordance fades.
+      pushRecentlyDeleted({ target_type: "recipe", target_id: recipeId, title: "Recipe" });
       setStatus("removed");
       setUndoVisible(true);
       // Hide the undo affordance after 8s; user can also reload to lose it.

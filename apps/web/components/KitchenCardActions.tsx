@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiDelete, apiPost } from "@/lib/api";
+import { pushRecentlyDeleted, removeRecentlyDeleted } from "@/lib/recentlyDeleted";
 import { FoodConfetti } from "./FoodConfetti";
 
 interface Props {
@@ -41,6 +42,7 @@ export function KitchenCardActions({
     setBusy(true);
     try {
       await apiDelete("/api/kitchen", { entry_id: entryId });
+      pushRecentlyDeleted({ target_type: targetType, target_id: targetId, title: targetLabel });
       setRemoved(true);
       setUndoVisible(true);
       window.setTimeout(() => setUndoVisible(false), 8000);
@@ -59,6 +61,7 @@ export function KitchenCardActions({
     setBusy(true);
     try {
       await apiPost("/api/kitchen", { [`${targetType}_id`]: targetId });
+      removeRecentlyDeleted(targetType, targetId);
       setRemoved(false);
       setUndoVisible(false);
       router.refresh();

@@ -28,6 +28,9 @@ export interface SwapResult {
     }[];
     narrative: string;
     tuned_for_you_reasons: string[];
+    product_url?: string | null;
+    brand_name?: string | null;
+    product_image_url?: string | null;
   } | null;
   latencyMs: number | null;
   cached: boolean;
@@ -84,6 +87,86 @@ export function SwapResultCard({
     } finally {
       setSaving(false);
     }
+  }
+
+  const isProduct =
+    !!currentOutput.product_url &&
+    currentOutput.recipe.ingredients.length === 0 &&
+    currentOutput.recipe.steps.length === 0;
+
+  if (isProduct) {
+    return (
+      <article className="card overflow-hidden animate-fade-up">
+        <header className="p-8 bg-gradient-to-br from-honey/30 via-cream to-paper">
+          <div className="flex items-center justify-between mb-4">
+            <span className="badge-tuned">Tuned for you · Product pick</span>
+            {result.latencyMs && (
+              <span className="text-xs text-ink-muted">
+                {result.cached ? "Cached" : `Generated in ${(result.latencyMs / 1000).toFixed(1)}s`}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-ink-soft mb-2">
+            Real-food product for <strong>{result.query}</strong>
+          </p>
+          <div className="flex flex-col md:flex-row md:items-center gap-6 mt-4">
+            {currentOutput.product_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={currentOutput.product_image_url}
+                alt={currentOutput.title}
+                className="w-32 h-32 object-contain rounded-soft bg-white p-2 shadow-card"
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-32 h-32 rounded-soft bg-cream grid place-items-center text-3xl font-bold text-ink-muted shadow-card">
+                {currentOutput.title?.charAt(0).toUpperCase() ?? "?"}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              {currentOutput.brand_name && (
+                <p className="text-xs uppercase tracking-[0.18em] text-ink-muted mb-1">
+                  {currentOutput.brand_name}
+                </p>
+              )}
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight break-words">
+                {currentOutput.title}
+              </h2>
+              {currentOutput.tagline && (
+                <p className="text-lg text-ink-soft mt-2">{currentOutput.tagline}</p>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <div className="px-8 py-5 bg-white border-y border-ink/5">
+          <p className="text-ink-soft leading-relaxed">{currentOutput.narrative}</p>
+        </div>
+
+        <div className="p-8 flex flex-wrap items-center gap-3 print:hidden">
+          <a
+            href={currentOutput.product_url ?? "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary"
+          >
+            Visit on {currentOutput.brand_name ?? "the brand site"} →
+          </a>
+          {onTryAnotherVersion && (
+            <button
+              type="button"
+              onClick={onTryAnotherVersion}
+              disabled={retryingVersion}
+              className="btn-secondary"
+            >
+              {retryingVersion ? "Cooking another…" : "🔄 Try another version"}
+            </button>
+          )}
+        </div>
+
+        <FoodConfetti active={celebrate} onDone={() => setCelebrate(false)} />
+      </article>
+    );
   }
 
   const reasonsCount = currentOutput.tuned_for_you_reasons.length;

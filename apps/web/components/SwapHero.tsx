@@ -158,24 +158,36 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
     setImage(null);
   }
 
+  function backToSwapScreen() {
+    setShowDismiss(false);
+    setResult(null);
+    setQuery("");
+    clearPickedImage();
+    setSeenTitles([]);
+  }
+
   if (result) {
     return (
       <div className="space-y-6">
-        <button
-          onClick={() => setShowDismiss(true)}
-          className="btn-ghost"
-        >
-          ← Try another
-        </button>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <button
+            onClick={backToSwapScreen}
+            className="inline-flex items-center gap-2 rounded-pill bg-paper text-ink ring-1 ring-ink/10 px-4 py-2 text-sm font-semibold shadow-card hover:bg-honey/60 transition-colors"
+          >
+            ← Try another swap
+          </button>
+          <button
+            onClick={() => setShowDismiss((v) => !v)}
+            className="btn-ghost-on-dark text-sm"
+          >
+            {showDismiss ? "Hide feedback" : "Not for me — give feedback"}
+          </button>
+        </div>
         {showDismiss ? (
           <DismissSurvey
             swapId={result.swapId}
             query={result.query}
-            onDone={() => {
-              setShowDismiss(false);
-              setResult(null);
-              setQuery("");
-            }}
+            onDone={backToSwapScreen}
           />
         ) : (
           <SwapResultCard
