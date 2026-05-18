@@ -25,9 +25,12 @@ interface Props {
   rotation: CoachCard[];
   // Stable seed inputs so "Show another" stays deterministic per user/day.
   initialCursor: number;
+  // When true, the component renders without its own outer ring/shadow/margin
+  // because it lives inside the shared CoachDashboard frame.
+  inDashboard?: boolean;
 }
 
-export function CoachCard({ initialCard, rotation, initialCursor }: Props) {
+export function CoachCard({ initialCard, rotation, initialCursor, inDashboard }: Props) {
   const router = useRouter();
   const [card, setCard] = useState<CoachCard>(initialCard);
   const [cursor, setCursor] = useState(initialCursor);
@@ -80,13 +83,18 @@ export function CoachCard({ initialCard, rotation, initialCursor }: Props) {
     setReward(null);
   }
 
+  // When in the shared dashboard frame we drop our own ring/shadow/margin so
+  // the parent owns the card chrome and the three sections feel like one box.
+  const wrapperCls = inDashboard ? "" : "mb-8";
+  const innerCls = inDashboard
+    ? `relative overflow-hidden ${pulse ? "animate-win-pulse" : ""}`
+    : `relative rounded-soft bg-paper ring-1 ring-ink/5 shadow-card overflow-hidden ${
+        pulse ? "animate-win-pulse" : ""
+      }`;
+
   return (
-    <section className="mb-8">
-      <div
-        className={`relative rounded-soft bg-paper ring-1 ring-ink/5 shadow-card overflow-hidden ${
-          pulse ? "animate-win-pulse" : ""
-        }`}
-      >
+    <section className={wrapperCls}>
+      <div className={innerCls}>
         {/* Meal-slot tile — colored block + icon, no photos in v1. */}
         <div
           className={`${info.tile} px-5 py-4 md:px-6 md:py-5 flex items-center gap-3`}

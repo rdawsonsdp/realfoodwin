@@ -18,6 +18,8 @@ interface Props {
   firstName: string;
   // Server-rendered opening turn so the conversation starts warm and personal.
   openingTurn: string;
+  // When true, drops outer ring/shadow/margin — lives inside CoachDashboard.
+  inDashboard?: boolean;
 }
 
 interface Turn {
@@ -31,7 +33,7 @@ interface NotedPill {
   subject: string;
 }
 
-export function CoachChat({ firstName, openingTurn }: Props) {
+export function CoachChat({ firstName, openingTurn, inDashboard }: Props) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([
@@ -143,8 +145,12 @@ export function CoachChat({ firstName, openingTurn }: Props) {
   const lastAssistant = [...turns].reverse().find((t) => t.role === "assistant");
   const displayText = streaming && streamingText ? streamingText : lastAssistant?.content ?? "";
 
+  const sectionCls = inDashboard
+    ? "overflow-hidden"
+    : "mb-8 rounded-soft bg-paper ring-1 ring-ink/5 shadow-card overflow-hidden";
+
   return (
-    <section className="mb-8 rounded-soft bg-paper ring-1 ring-ink/5 shadow-card overflow-hidden">
+    <section className={sectionCls}>
       <button
         type="button"
         onClick={() => setExpanded((x) => !x)}

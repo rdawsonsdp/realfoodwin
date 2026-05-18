@@ -14,6 +14,9 @@ import { mealSlotInfo } from "@/lib/meal-slot";
 
 interface Props {
   notes: CoachNote[];
+  // When true, render without the standalone section header / outer frame and
+  // show only the most recent note (compact dashboard treatment).
+  inDashboard?: boolean;
 }
 
 function timeAgo(iso: string): string {
@@ -25,9 +28,43 @@ function timeAgo(iso: string): string {
   return `${Math.floor(diffDays / 7)}w ago`;
 }
 
-export function CoachNotes({ notes }: Props) {
+export function CoachNotes({ notes, inDashboard }: Props) {
   if (notes.length === 0) return null;
 
+  // Compact dashboard mode: one note, no outer card chrome, no h2 header.
+  if (inDashboard) {
+    const n = notes[0]!;
+    const card = cardById(n.cardId);
+    if (!card) return null;
+    const info = mealSlotInfo(card.slot);
+    const repeat = n.timesThisFortnight;
+    return (
+      <div className="px-5 py-4 md:px-6 md:py-5">
+        <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+          <span aria-hidden className="text-base leading-none">
+            📒
+          </span>
+          <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-ink-muted">
+            What you&apos;re learning · {info.label.replace(" window", "")} · {timeAgo(n.occurredAt)}
+          </p>
+          {repeat > 1 && (
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-pill bg-sage-soft text-forest-700">
+              {repeat}× this fortnight
+            </span>
+          )}
+        </div>
+        <p className="text-sm md:text-base font-semibold text-ink leading-snug">
+          {card.replacement}
+        </p>
+        <p className="mt-1.5 text-sm text-ink-soft leading-relaxed">
+          {card.coaching}
+        </p>
+      </div>
+    );
+  }
+
+  // Full-page section view (legacy spot, no longer used by /home-v2 but kept
+  // in case we surface a richer "your wins" page later).
   return (
     <section className="mb-8">
       <h2 className="text-sm uppercase tracking-[0.16em] font-semibold text-paper/70 mb-3">

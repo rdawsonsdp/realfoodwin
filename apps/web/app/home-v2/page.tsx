@@ -13,6 +13,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { HomeViewToggle } from "@/components/HomeViewToggle";
 import { HeroStrip } from "@/components/home-v2/HeroStrip";
 import { CoachCard } from "@/components/home-v2/CoachCard";
+import { CoachDashboard } from "@/components/home-v2/CoachDashboard";
 import { WeekChain } from "@/components/home-v2/WeekChain";
 import { CoachNotes } from "@/components/home-v2/CoachNotes";
 import { CoachChat } from "@/components/home-v2/CoachChat";
@@ -112,15 +113,33 @@ export default async function HomeV2() {
       <main className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-10">
         <HomeViewToggle active="coach" />
         <HeroStrip firstName={firstName} slot={slot} now={now} />
-        <CoachCard
-          initialCard={initialCard}
-          rotation={rotation}
-          initialCursor={Math.max(0, initialCursor)}
+
+        {/* The clipboard dashboard — today's play, the coach's call (chat), and
+            yesterday's tape (educational look-back) in one frame at the top.
+            This is the morning thing the user comes back to. */}
+        <CoachDashboard
+          slot={slot}
+          now={now}
+          play={
+            <CoachCard
+              initialCard={initialCard}
+              rotation={rotation}
+              initialCursor={Math.max(0, initialCursor)}
+              inDashboard
+            />
+          }
+          call={
+            <CoachChat firstName={firstName} openingTurn={openingTurn} inDashboard />
+          }
+          tape={
+            coachNotes.length > 0 ? (
+              <CoachNotes notes={coachNotes} inDashboard />
+            ) : null
+          }
         />
 
-        {/* Free-form swap entry — the app's primary action. The CoachCard above
-            handles the time-cued nudge; this is for everything else the user
-            wants to swap. */}
+        {/* Free-form swap entry — the app's primary action for anything not
+            already on the playbook. */}
         <section className="mb-8">
           <h2 className="text-sm uppercase tracking-[0.16em] font-semibold text-paper/70 mb-3">
             Swap something else
@@ -129,8 +148,6 @@ export default async function HomeV2() {
         </section>
 
         <WeekChain stats={stats} />
-        <CoachNotes notes={coachNotes} />
-        <CoachChat firstName={firstName} openingTurn={openingTurn} />
         <RecentSwaps items={recentSwaps} />
         <RecipePulse saved={stats.recipesSavedThisWeek} made={stats.recipesMadeThisWeek} />
         <PickUpWhere items={pickUp} />

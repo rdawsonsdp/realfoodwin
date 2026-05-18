@@ -224,19 +224,24 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   }
 
   return (
-    <div className="space-y-8 md:space-y-10">
-      <div className="text-center space-y-4 max-w-2xl mx-auto">
-        <div className="badge-tuned mx-auto">Replace ultra-processed food with real food</div>
-        {/* Hero copy responsive — was text-5xl on phones (48px), now starts at
-            text-3xl so it fits a 360px viewport without breaking words. */}
-        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-[1.1] md:leading-[1.05] tracking-tight text-paper">
-          <span className="text-coral">Real Food</span>{" "}
-          <span className="italic font-serif">Diet Swaps</span>
-        </h1>
-        <p className="text-base md:text-lg text-paper/80">
-          Type any product and press Enter — we'll show you the real food version with ingredients, nutrition comparison, and a recipe you can make today.
-        </p>
-      </div>
+    <div className={isLoggedIn ? "space-y-4" : "space-y-8 md:space-y-10"}>
+      {/* Marketing hero is acquisition copy — only signed-out visitors need
+          it. Logged-in users know what a swap is; skip the pitch and lead
+          with the input. */}
+      {!isLoggedIn && (
+        <div className="text-center space-y-4 max-w-2xl mx-auto">
+          <div className="badge-tuned mx-auto">Replace ultra-processed food with real food</div>
+          {/* Hero copy responsive — was text-5xl on phones (48px), now starts at
+              text-3xl so it fits a 360px viewport without breaking words. */}
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-[1.1] md:leading-[1.05] tracking-tight text-paper">
+            <span className="text-coral">Real Food</span>{" "}
+            <span className="italic font-serif">Diet Swaps</span>
+          </h1>
+          <p className="text-base md:text-lg text-paper/80">
+            Type any product and press Enter — we&apos;ll show you the real food version with ingredients, nutrition comparison, and a recipe you can make today.
+          </p>
+        </div>
+      )}
 
       <form onSubmit={onSubmit} className="max-w-2xl mx-auto">
         <div className="card p-2 flex items-center gap-1.5 sm:gap-2 shadow-warm">
@@ -308,22 +313,27 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
 
         <SwapPreferences value={prefs} onChange={setPrefs} disabled={loading} />
 
-        <div className="flex flex-wrap gap-2 mt-4 justify-center">
-          <span className="text-sm text-ink-muted self-center mr-1">Try:</span>
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex}
-              type="button"
-              onClick={() => {
-                setQuery(ex);
-                void runSwap(ex, image);
-              }}
-              className="chip"
-            >
-              {ex}
-            </button>
-          ))}
-        </div>
+        {/* "Try:" example chips are onboarding aids for first-time visitors —
+            logged-in users already know what to type, so we hide the row for
+            them to keep the section clean. */}
+        {!isLoggedIn && (
+          <div className="flex flex-wrap gap-2 mt-4 justify-center">
+            <span className="text-sm text-ink-muted self-center mr-1">Try:</span>
+            {EXAMPLES.map((ex) => (
+              <button
+                key={ex}
+                type="button"
+                onClick={() => {
+                  setQuery(ex);
+                  void runSwap(ex, image);
+                }}
+                className="chip"
+              >
+                {ex}
+              </button>
+            ))}
+          </div>
+        )}
       </form>
 
       {error && errorCode === "model_not_found" ? (

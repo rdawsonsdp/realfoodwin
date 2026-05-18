@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { SwapFabGate } from "@/components/SwapFabGate";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -38,7 +39,11 @@ export default function RootLayout({
     <html lang="en" className={jakarta.variable}>
       {/* pb-20 md:pb-0 reserves room for the mobile bottom tab bar so content
           never tucks behind the 64-72px tall tabbar on phones. */}
-      <body className="pb-20 md:pb-0">{children}</body>
+      <body className="pb-20 md:pb-0">
+        {children}
+        {/* Floating swap entry (visible for logged-in users only). */}
+        <SwapFabGate />
+      </body>
     </html>
   );
 }
