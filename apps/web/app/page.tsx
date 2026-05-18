@@ -3,6 +3,7 @@ import { SwapHero } from "@/components/SwapHero";
 import { HeroSplash } from "@/components/HeroSplash";
 import { CoachGreeting } from "@/components/CoachGreeting";
 import { FreshFinds } from "@/components/FreshFinds";
+import { HomeViewToggle } from "@/components/HomeViewToggle";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 export default async function Home() {
@@ -17,6 +18,7 @@ export default async function Home() {
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10">
         {user ? (
           <>
+            <HomeViewToggle active="classic" />
             <CoachGreeting />
             <FreshFinds />
           </>

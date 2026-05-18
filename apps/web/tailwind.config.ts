@@ -85,10 +85,22 @@ const config: Config = {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        "win-pulse": {
+          "0%": { transform: "scale(1)", boxShadow: "0 0 0 0 rgba(243, 155, 71, 0.45)" },
+          "50%": { transform: "scale(1.02)", boxShadow: "0 0 0 10px rgba(243, 155, 71, 0)" },
+          "100%": { transform: "scale(1)", boxShadow: "0 0 0 0 rgba(243, 155, 71, 0)" },
+        },
+        "count-bump": {
+          "0%": { transform: "translateY(0)" },
+          "40%": { transform: "translateY(-4px)" },
+          "100%": { transform: "translateY(0)" },
+        },
       },
       animation: {
         "fade-up": "fade-up 280ms cubic-bezier(0.16, 1, 0.3, 1)",
         "shimmer": "shimmer 2s ease-in-out infinite",
+        "win-pulse": "win-pulse 480ms ease-out",
+        "count-bump": "count-bump 360ms ease-out",
       },
     },
   },
