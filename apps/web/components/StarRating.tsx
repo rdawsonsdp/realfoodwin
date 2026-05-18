@@ -18,6 +18,9 @@ interface Props {
   // When the user rates, you can refresh server-rendered pages by passing this.
   onRated?: (stars: number) => void;
   isLoggedIn?: boolean;
+  // Opt out of the FoodConfetti celebration on 4-5 stars. Used in lists where
+  // confetti would be too much (e.g. the home page recent-swaps row).
+  celebrateOnRate?: boolean;
 }
 
 const SIZES: Record<Size, { star: string; gap: string }> = {
@@ -36,6 +39,7 @@ export function StarRating({
   size = "md",
   onRated,
   isLoggedIn = true,
+  celebrateOnRate = true,
 }: Props) {
   const router = useRouter();
   const [stars, setStars] = useState(initialStars ?? 0);
@@ -61,7 +65,7 @@ export function StarRating({
       });
       onRated?.(s);
       // 4 or 5 stars: celebrate with falling food. 1-3: gentle pulse only.
-      if (s >= 4) setCelebrate(true);
+      if (s >= 4 && celebrateOnRate) setCelebrate(true);
       router.refresh();
     } catch (err) {
       // eslint-disable-next-line no-console

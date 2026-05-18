@@ -1,10 +1,27 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { runSwapGenerator, ModelNotFoundError } from "@realfoodwin/gateway";
+import {
+  runSwapGenerator,
+  ModelNotFoundError,
+  type SwapPreferencesInput,
+} from "@realfoodwin/gateway";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getMemorySummary } from "@/lib/coach-memory";
 
 export const runtime = "nodejs"; // Anthropic SDK needs Node, not Edge
 export const dynamic = "force-dynamic";
+
+function dedup(items: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const it of items) {
+    const k = it.trim().toLowerCase();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(it.trim());
+  }
+  return out;
+}
 
 const ImageSchema = z.object({
   media_type: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
@@ -51,6 +68,29 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // The multiplier: anything the coach has learned about this user (dislikes,
+  // likes, allergies) flows into every swap, not just the chat. Layered on top
+  // of any user-supplied preferences for this request — user intent wins on
+  // conflicts because the merge order keeps memory items behind explicit input.
+  let mergedPreferences: SwapPreferencesInput | null = parsed.data.preferences ?? null;
+  if (user?.id) {
+    const mem = await getMemorySummary(user.id).catch(() => null);
+    if (mem) {
+      const dislikeSubjects = mem.dislikes.map((d) => d.subject);
+      const allergySubjects = mem.dislikes
+        .filter((d) => /allerg/i.test(d.note ?? ""))
+        .map((d) => d.subject);
+      const likeSubjects = mem.likes.map((l) => l.subject);
+      const base: SwapPreferencesInput = mergedPreferences ?? {};
+      mergedPreferences = {
+        ...base,
+        allergens: dedup([...(base.allergens ?? []), ...allergySubjects]),
+        avoid_soft: dedup([...(base.avoid_soft ?? []), ...dislikeSubjects]),
+        prioritize: dedup([...(base.prioritize ?? []), ...likeSubjects]),
+      };
+    }
+  }
+
   try {
     const result = await runSwapGenerator({
       userId: user?.id ?? null,
@@ -59,7 +99,7 @@ export async function POST(req: Request) {
       image: parsed.data.image
         ? { mediaType: parsed.data.image.media_type, data: parsed.data.image.data }
         : undefined,
-      preferences: parsed.data.preferences ?? null,
+      preferences: mergedPreferences,
       avoidTitles: parsed.data.avoid_titles ?? null,
       feedback: parsed.data.feedback ?? null,
       clientPlatform: "web",

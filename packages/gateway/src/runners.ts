@@ -22,6 +22,9 @@ export interface SwapPreferencesInput {
   max_prep_minutes?: number | null;
   prioritize?: string[];
   must_include?: string[];
+  // Soft avoids from coach memory (dislikes, learned aversions). Rendered as a
+  // "prefer to avoid" line — not a hard allergen constraint, but a strong hint.
+  avoid_soft?: string[];
 }
 
 export interface SwapGeneratorRunInput {
@@ -44,6 +47,7 @@ function formatPreferences(p: SwapPreferencesInput | null | undefined): string {
   }
   if (p.dietary_styles?.length) lines.push(`Dietary style: ${p.dietary_styles.join(", ")}`);
   if (p.allergens?.length) lines.push(`Must AVOID (allergens): ${p.allergens.join(", ")}`);
+  if (p.avoid_soft?.length) lines.push(`Prefer to avoid (user has told the coach they dislike these — don't lead with them): ${p.avoid_soft.join(", ")}`);
   if (p.max_prep_minutes != null) lines.push(`Max prep time: ${p.max_prep_minutes} minutes`);
   if (p.prioritize?.length) lines.push(`Prioritize: ${p.prioritize.join(", ")}`);
   if (p.must_include?.length) lines.push(`Must include: ${p.must_include.join(", ")}`);

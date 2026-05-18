@@ -183,6 +183,121 @@ export async function getWeekStats(userId: string, now: Date = new Date()): Prom
   };
 }
 
+// Coach's Notes — recent made swaps mapped back to their card so we can
+// surface the educational "why this worked" content. Deduped by card so the
+// same swap doesn't repeat; the most recent occurrence wins. Hidden in UI when
+// the list is empty (no made history yet).
+export interface CoachNote {
+  cardId: string;
+  occurredAt: string;
+  timesThisFortnight: number;
+}
+
+export async function getCoachNotes(userId: string, limit = 3, days = 14): Promise<CoachNote[]> {
+  const supabase = createSupabaseServer();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data } = await supabase
+    .from("events")
+    .select("event_type, metadata, created_at")
+    .eq("user_id", userId)
+    .in("event_type", ["home_v2_made_swap", "made_it"])
+    .gte("created_at", since)
+    .order("created_at", { ascending: false });
+
+  if (!data) return [];
+
+  type EvRow = {
+    event_type: string;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+  };
+
+  // Dedupe by card id, keeping the most recent occurrence, while counting
+  // total occurrences so the UI can say "you've made this 3 times".
+  const byCard = new Map<string, { occurredAt: string; count: number }>();
+  for (const row of data as EvRow[]) {
+    const cardId =
+      row.metadata && typeof row.metadata === "object"
+        ? ((row.metadata as Record<string, unknown>)["coach_card_id"] as string | undefined)
+        : undefined;
+    if (!cardId) continue;
+    const existing = byCard.get(cardId);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      byCard.set(cardId, { occurredAt: row.created_at, count: 1 });
+    }
+  }
+
+  return Array.from(byCard.entries())
+    .slice(0, limit)
+    .map(([cardId, v]) => ({
+      cardId,
+      occurredAt: v.occurredAt,
+      timesThisFortnight: v.count,
+    }));
+}
+
+// Recent swap rows the user has generated. Used both to remind them what they
+// swapped (memory aid) and to collect ratings (recommendation signal).
+export interface RecentSwap {
+  id: string;
+  title: string;
+  query: string | null; // the junk-food query they typed, e.g. "Snickers"
+  narrative: string | null;
+  createdAt: string;
+  userStars: number | null; // their prior rating, if any
+}
+
+export async function getRecentSwaps(userId: string, limit = 5): Promise<RecentSwap[]> {
+  const supabase = createSupabaseServer();
+  const { data: swaps } = await supabase
+    .from("swaps")
+    .select("id, recipe, output, narrative, swap_target, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (!swaps || swaps.length === 0) return [];
+
+  type SwapRow = {
+    id: string;
+    recipe: { title?: string } | null;
+    output: { title?: string } | null;
+    narrative: string | null;
+    swap_target: string | null;
+    created_at: string;
+  };
+
+  const ids = (swaps as SwapRow[]).map((s) => s.id);
+
+  // Pull any existing ratings for these swaps in one round trip.
+  const { data: ratings } = await supabase
+    .from("recipe_ratings")
+    .select("target_id, stars")
+    .eq("user_id", userId)
+    .eq("target_type", "swap")
+    .in("target_id", ids);
+
+  const starsById = new Map<string, number>();
+  for (const r of (ratings as { target_id: string; stars: number }[] | null) ?? []) {
+    starsById.set(r.target_id, r.stars);
+  }
+
+  return (swaps as SwapRow[]).map((s) => {
+    const title = s.output?.title ?? s.recipe?.title ?? s.swap_target ?? "Saved swap";
+    return {
+      id: s.id,
+      title,
+      query: s.swap_target,
+      narrative: s.narrative,
+      createdAt: s.created_at,
+      userStars: starsById.get(s.id) ?? null,
+    };
+  });
+}
+
 // Pull the user's three most recently saved kitchen entries (for the
 // "Pick up where you left off" rail).
 export interface PickUpItem {

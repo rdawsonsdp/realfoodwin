@@ -8,17 +8,28 @@
 
 import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
+import { SwapHero } from "@/components/SwapHero";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { HomeViewToggle } from "@/components/HomeViewToggle";
 import { HeroStrip } from "@/components/home-v2/HeroStrip";
 import { CoachCard } from "@/components/home-v2/CoachCard";
 import { WeekChain } from "@/components/home-v2/WeekChain";
+import { CoachNotes } from "@/components/home-v2/CoachNotes";
+import { CoachChat } from "@/components/home-v2/CoachChat";
+import { RecentSwaps } from "@/components/home-v2/RecentSwaps";
 import { RecipePulse } from "@/components/home-v2/RecipePulse";
 import { PickUpWhere } from "@/components/home-v2/PickUpWhere";
 import { getMealSlot, DEFAULT_TIMEZONE } from "@/lib/meal-slot";
 import { cardsForSlot } from "@/data/coach-cards";
 import { selectCoachCard } from "@/lib/coach-card-selection";
-import { getWeekStats, getPickUpItems } from "@/lib/home-v2-stats";
+import {
+  getWeekStats,
+  getPickUpItems,
+  getCoachNotes,
+  getRecentSwaps,
+} from "@/lib/home-v2-stats";
+import { getMemorySummary } from "@/lib/coach-memory";
+import { buildOpeningTurn } from "@/lib/coach-opening";
 
 export const dynamic = "force-dynamic"; // time-of-day depends on now()
 
@@ -52,11 +63,15 @@ export default async function HomeV2() {
   const slot = getMealSlot(now);
   const localDate = localDateKey(now, DEFAULT_TIMEZONE);
 
-  const [userRow, stats, pickUp] = await Promise.all([
-    supabase.from("users").select("display_name").eq("id", user.id).maybeSingle(),
-    getWeekStats(user.id, now),
-    getPickUpItems(user.id, 3),
-  ]);
+  const [userRow, stats, pickUp, coachNotes, recentSwaps, memorySummary] =
+    await Promise.all([
+      supabase.from("users").select("display_name").eq("id", user.id).maybeSingle(),
+      getWeekStats(user.id, now),
+      getPickUpItems(user.id, 3),
+      getCoachNotes(user.id, 3),
+      getRecentSwaps(user.id, 5),
+      getMemorySummary(user.id),
+    ]);
 
   const firstName = firstNameFrom(
     (userRow.data as { display_name?: string | null } | null)?.display_name ?? null,
@@ -80,6 +95,17 @@ export default async function HomeV2() {
   });
   const initialCursor = rotation.findIndex((c) => c.id === initialCard.id);
 
+  const openingTurn = buildOpeningTurn({
+    firstName,
+    notes: coachNotes,
+    recentSwaps,
+    thisWeekMade: stats.thisWeekMade,
+    yesterdayMissed: stats.yesterdayMissed,
+    todayHasSwap: stats.todayHasSwap,
+    hasMemorySummary: memorySummary !== null,
+    memorySummary,
+  });
+
   return (
     <>
       <Nav />
@@ -91,7 +117,21 @@ export default async function HomeV2() {
           rotation={rotation}
           initialCursor={Math.max(0, initialCursor)}
         />
+
+        {/* Free-form swap entry — the app's primary action. The CoachCard above
+            handles the time-cued nudge; this is for everything else the user
+            wants to swap. */}
+        <section className="mb-8">
+          <h2 className="text-sm uppercase tracking-[0.16em] font-semibold text-paper/70 mb-3">
+            Swap something else
+          </h2>
+          <SwapHero isLoggedIn={true} />
+        </section>
+
         <WeekChain stats={stats} />
+        <CoachNotes notes={coachNotes} />
+        <CoachChat firstName={firstName} openingTurn={openingTurn} />
+        <RecentSwaps items={recentSwaps} />
         <RecipePulse saved={stats.recipesSavedThisWeek} made={stats.recipesMadeThisWeek} />
         <PickUpWhere items={pickUp} />
       </main>
