@@ -13,6 +13,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { HomeViewToggle } from "@/components/HomeViewToggle";
 import { HeroStrip } from "@/components/home-v2/HeroStrip";
 import { CoachCard } from "@/components/home-v2/CoachCard";
+import { NextUpCard } from "@/components/home-v2/NextUpCard";
 import { CoachDashboard } from "@/components/home-v2/CoachDashboard";
 import { WeekChain } from "@/components/home-v2/WeekChain";
 import { CoachNotes } from "@/components/home-v2/CoachNotes";
@@ -20,7 +21,13 @@ import { CoachChat } from "@/components/home-v2/CoachChat";
 import { RecentSwaps } from "@/components/home-v2/RecentSwaps";
 import { RecipePulse } from "@/components/home-v2/RecipePulse";
 import { PickUpWhere } from "@/components/home-v2/PickUpWhere";
-import { getMealSlot, DEFAULT_TIMEZONE } from "@/lib/meal-slot";
+import {
+  getMealSlot,
+  nextMealSlot,
+  nextSlotRelative,
+  mealSlotInfo,
+  DEFAULT_TIMEZONE,
+} from "@/lib/meal-slot";
 import { cardsForSlot } from "@/data/coach-cards";
 import { selectCoachCard } from "@/lib/coach-card-selection";
 import {
@@ -96,6 +103,25 @@ export default async function HomeV2() {
   });
   const initialCursor = rotation.findIndex((c) => c.id === initialCard.id);
 
+  // Proactive lookahead: pick the next meal slot's card too so the user always
+  // sees what's coming. The label rolls over naturally (wind_down → tomorrow's
+  // breakfast handled by nextSlotRelative).
+  const upcomingSlot = nextMealSlot(slot);
+  const nextSlotPool = cardsForSlot(upcomingSlot);
+  const nextRotation = nextSlotPool.filter((c) => !recent.has(c.id));
+  const nextRotationFinal = nextRotation.length > 0 ? nextRotation : nextSlotPool;
+  const nextInitial = selectCoachCard({
+    userId: user.id,
+    slot: upcomingSlot,
+    recentlyMadeIds: stats.recentlyMadeCardIds,
+    localDate,
+    cursor: 0,
+  });
+  const nextCursor = nextRotationFinal.findIndex((c) => c.id === nextInitial.id);
+  const upcomingInfo = mealSlotInfo(upcomingSlot);
+  const tomorrowPrefix = upcomingSlot === "breakfast" && slot === "wind_down" ? "Tomorrow's " : "";
+  const nextWhenLabel = `${tomorrowPrefix}${upcomingInfo.label.replace(" window", "").toUpperCase()} · ${nextSlotRelative(slot, now)}`;
+
   const openingTurn = buildOpeningTurn({
     firstName,
     notes: coachNotes,
@@ -126,6 +152,14 @@ export default async function HomeV2() {
               rotation={rotation}
               initialCursor={Math.max(0, initialCursor)}
               inDashboard
+            />
+          }
+          nextUp={
+            <NextUpCard
+              initialCard={nextInitial}
+              rotation={nextRotationFinal}
+              initialCursor={Math.max(0, nextCursor)}
+              whenLabel={nextWhenLabel}
             />
           }
           call={

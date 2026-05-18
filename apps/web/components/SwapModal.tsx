@@ -193,12 +193,42 @@ export function SwapModal({ open, onClose }: Props) {
             />
             <BarcodeButton
               disabled={loading}
-              onScan={(code) => {
-                // Submit the detected code as the query. The swap API + LLM can
-                // interpret a bare barcode; future enhancement: resolve via
-                // Open Food Facts first for a friendlier product name.
-                setQuery(code);
-                void submit(null, code);
+              onScan={async (code) => {
+                // Cascade: try our local cache + Open Food Facts first to turn
+                // the bare UPC into a friendly product name. If unknown, fall
+                // back to passing the raw code to the swap engine — Claude can
+                // sometimes identify it from memory.
+                setLoading(true);
+                setError(null);
+                try {
+                  const resolveResp = await fetch("/api/barcode/lookup", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ barcode: code }),
+                  });
+                  if (resolveResp.ok) {
+                    const json = (await resolveResp.json()) as {
+                      data?: { name?: string; brand?: string | null };
+                    };
+                    const name = json.data?.name?.trim();
+                    if (name) {
+                      const friendlyQuery = json.data?.brand
+                        ? `${json.data.brand} ${name}`.trim()
+                        : name;
+                      setQuery(friendlyQuery);
+                      await submit(null, friendlyQuery);
+                      return;
+                    }
+                  }
+                  // Resolver miss → fall back to raw code.
+                  setQuery(code);
+                  await submit(null, code);
+                } catch {
+                  setQuery(code);
+                  await submit(null, code);
+                } finally {
+                  setLoading(false);
+                }
               }}
             />
             <button

@@ -18,14 +18,15 @@ import { localClock, mealSlotInfo, type MealSlot } from "@/lib/meal-slot";
 interface Props {
   slot: MealSlot;
   now: Date;
-  // The three sections — pre-built by the page so we don't have to thread
+  // The four sections — pre-built by the page so we don't have to thread
   // every prop through here. Pass `null` for any section that should hide.
   play: ReactNode;
+  nextUp?: ReactNode | null;
   call: ReactNode;
   tape?: ReactNode | null;
 }
 
-export function CoachDashboard({ slot, now, play, call, tape }: Props) {
+export function CoachDashboard({ slot, now, play, nextUp, call, tape }: Props) {
   const info = mealSlotInfo(slot);
   const playLabel = `${info.label.replace(" window", "").toUpperCase()} PLAY`;
 
@@ -84,6 +85,23 @@ export function CoachDashboard({ slot, now, play, call, tape }: Props) {
 
           {/* Perforation */}
           <div aria-hidden className="mx-5 md:mx-6 border-t border-dashed border-ink/15" />
+
+          {/* Section 1.5: next up — proactive lookahead. Only renders if the
+              page passed a node. Visually quieter than TODAY'S PLAY by design;
+              it's a queued move, not the headline. */}
+          {nextUp && (
+            <>
+              <div className="relative">
+                <div className="px-5 pt-4 md:px-6 md:pt-5">
+                  <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-forest-700">
+                    Next up
+                  </p>
+                </div>
+                {nextUp}
+              </div>
+              <div aria-hidden className="mx-5 md:mx-6 border-t border-dashed border-ink/15" />
+            </>
+          )}
 
           {/* Section 2: coach's call */}
           <div className="relative">
