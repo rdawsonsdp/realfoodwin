@@ -331,9 +331,13 @@ function formatProfile(p: Record<string, unknown>): string {
   const lines: string[] = [];
   const pick = (k: string) => p[k];
   const dp = pick("dietary_pattern");
-  if (Array.isArray(dp) && dp.length) lines.push(`Dietary pattern: ${dp.join(", ")}`);
+  if (Array.isArray(dp) && dp.length) lines.push(`Dietary pattern (hard preference — every recommendation must respect this): ${dp.join(", ")}`);
   const al = pick("allergies");
-  if (Array.isArray(al) && al.length) lines.push(`Allergies: ${al.join(", ")}`);
+  if (Array.isArray(al) && al.length) lines.push(`MUST AVOID — allergies & hard avoids (treat as non-negotiable; never include these ingredients): ${al.join(", ")}`);
+  const extra = pick("extra") as { allergies_other?: string | null } | null | undefined;
+  if (extra?.allergies_other && extra.allergies_other.trim()) {
+    lines.push(`MUST AVOID — additional user-stated avoids: ${extra.allergies_other.trim()}`);
+  }
   const hc = pick("household_composition");
   if (typeof hc === "string") lines.push(`Cooking for: ${hc}`);
   const tg = pick("top_goal");

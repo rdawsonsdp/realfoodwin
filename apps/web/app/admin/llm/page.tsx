@@ -4,6 +4,7 @@ import { requireEnv } from "@/lib/env";
 export const dynamic = "force-dynamic";
 
 interface AggRow {
+  date: string; // YYYY-MM-DD (local date the call was made)
   agent_name: string;
   model: string;
   count: number;
@@ -11,6 +12,12 @@ interface AggRow {
   avgLatencyMs: number;
   totalInputTokens: number;
   totalOutputTokens: number;
+}
+
+function localDay(ts: string): string {
+  // ISO timestamp → YYYY-MM-DD in the viewer's locale (server-rendered, so
+  // this resolves to America/Los_Angeles for the demo deployment).
+  return new Date(ts).toLocaleDateString("en-CA");
 }
 
 export default async function AdminLlmPage() {
@@ -27,13 +34,15 @@ export default async function AdminLlmPage() {
     .limit(5000);
 
   const rows = calls ?? [];
-  const byAgent = new Map<string, AggRow>();
+  const byDateAgent = new Map<string, AggRow>();
   let totalCost = 0;
   let errors = 0;
 
   for (const c of rows) {
-    const k = `${c.agent_name}|${c.model}`;
-    const r = byAgent.get(k) ?? {
+    const d = localDay(c.created_at);
+    const k = `${d}|${c.agent_name}|${c.model}`;
+    const r = byDateAgent.get(k) ?? {
+      date: d,
       agent_name: c.agent_name,
       model: c.model,
       count: 0,
@@ -47,13 +56,19 @@ export default async function AdminLlmPage() {
     r.avgLatencyMs += c.latency_ms ?? 0;
     r.totalInputTokens += c.input_tokens ?? 0;
     r.totalOutputTokens += c.output_tokens ?? 0;
-    byAgent.set(k, r);
+    byDateAgent.set(k, r);
     totalCost += Number(c.cost_usd ?? 0);
     if (c.status === "error") errors += 1;
   }
-  for (const r of byAgent.values()) r.avgLatencyMs = Math.round(r.avgLatencyMs / r.count);
+  for (const r of byDateAgent.values()) r.avgLatencyMs = Math.round(r.avgLatencyMs / r.count);
 
-  const agentRows = Array.from(byAgent.values()).sort((a, b) => b.totalCost - a.totalCost);
+  // Sort: newest date first, then agent name A→Z, then model A→Z within the
+  // same agent so duplicate models in a row stay grouped.
+  const agentRows = Array.from(byDateAgent.values()).sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    if (a.agent_name !== b.agent_name) return a.agent_name.localeCompare(b.agent_name);
+    return a.model.localeCompare(b.model);
+  });
 
   return (
     <div className="space-y-6">
@@ -69,11 +84,12 @@ export default async function AdminLlmPage() {
       </section>
 
       <section className="card overflow-hidden">
-        <h2 className="text-lg font-bold p-5 pb-3">Spend by agent</h2>
+        <h2 className="text-lg font-bold p-5 pb-3">Spend by date &amp; agent</h2>
         <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[640px]">
+        <table className="w-full text-sm min-w-[720px]">
           <thead className="bg-paper text-xs uppercase tracking-wider text-ink-muted">
             <tr>
+              <th className="text-left px-5 py-3">Date</th>
               <th className="text-left px-5 py-3">Agent</th>
               <th className="text-left px-5 py-3">Model</th>
               <th className="text-right px-5 py-3">Calls</th>
@@ -84,28 +100,34 @@ export default async function AdminLlmPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-ink/5">
-            {agentRows.map((r) => (
-              <tr key={`${r.agent_name}|${r.model}`} className="hover:bg-paper/50">
-                <td className="px-5 py-3 font-semibold">{r.agent_name}</td>
-                <td className="px-5 py-3 text-ink-muted">{r.model}</td>
-                <td className="px-5 py-3 text-right">{r.count}</td>
-                <td className="px-5 py-3 text-right font-bold">
-                  ${r.totalCost.toFixed(2)}
-                </td>
-                <td className="px-5 py-3 text-right text-ink-muted">
-                  {r.avgLatencyMs.toLocaleString()} ms
-                </td>
-                <td className="px-5 py-3 text-right text-ink-muted">
-                  {r.totalInputTokens.toLocaleString()}
-                </td>
-                <td className="px-5 py-3 text-right text-ink-muted">
-                  {r.totalOutputTokens.toLocaleString()}
-                </td>
-              </tr>
-            ))}
+            {agentRows.map((r, idx) => {
+              const isNewDate = idx === 0 || agentRows[idx - 1]!.date !== r.date;
+              return (
+                <tr key={`${r.date}|${r.agent_name}|${r.model}`} className="hover:bg-paper/50">
+                  <td className="px-5 py-3 text-ink-muted whitespace-nowrap">
+                    {isNewDate ? r.date : ""}
+                  </td>
+                  <td className="px-5 py-3 font-semibold">{r.agent_name}</td>
+                  <td className="px-5 py-3 text-ink-muted">{r.model}</td>
+                  <td className="px-5 py-3 text-right">{r.count}</td>
+                  <td className="px-5 py-3 text-right font-bold">
+                    ${r.totalCost.toFixed(2)}
+                  </td>
+                  <td className="px-5 py-3 text-right text-ink-muted">
+                    {r.avgLatencyMs.toLocaleString()} ms
+                  </td>
+                  <td className="px-5 py-3 text-right text-ink-muted">
+                    {r.totalInputTokens.toLocaleString()}
+                  </td>
+                  <td className="px-5 py-3 text-right text-ink-muted">
+                    {r.totalOutputTokens.toLocaleString()}
+                  </td>
+                </tr>
+              );
+            })}
             {agentRows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-6 text-center text-ink-muted">
+                <td colSpan={8} className="px-5 py-6 text-center text-ink-muted">
                   No agent calls logged yet.
                 </td>
               </tr>

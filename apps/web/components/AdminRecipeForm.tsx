@@ -9,6 +9,7 @@ interface Props {
   initial?: {
     id?: string;
     title?: string;
+    description?: string | null;
     ingredients?: Array<{ name: string; quantity?: string; unit?: string } | string>;
     steps?: string[];
     time_min?: number | null;
@@ -42,10 +43,13 @@ export function AdminRecipeForm({ mode, initial }: Props) {
   const [difficulty, setDifficulty] = useState<string>(initial?.difficulty ?? "");
   const [mealType, setMealType] = useState<string>(initial?.meal_type ?? "");
   const [tags, setTags] = useState<string>((initial?.tags ?? []).join(", "));
+  const [description, setDescription] = useState<string>(initial?.description ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bulkJson, setBulkJson] = useState("");
   const [showBulk, setShowBulk] = useState(false);
+  const [bulkUpsert, setBulkUpsert] = useState(true);
+  const [bulkResult, setBulkResult] = useState<string | null>(null);
 
   async function save() {
     setSaving(true);
@@ -53,6 +57,7 @@ export function AdminRecipeForm({ mode, initial }: Props) {
     try {
       const payload = {
         title: title.trim(),
+        description: description.trim() ? description.trim() : null,
         ingredients: ingredients
           .split("\n")
           .map((s) => s.trim())
@@ -94,6 +99,7 @@ export function AdminRecipeForm({ mode, initial }: Props) {
   async function bulkUpload() {
     setSaving(true);
     setError(null);
+    setBulkResult(null);
     try {
       const parsed = JSON.parse(bulkJson);
       const arr = Array.isArray(parsed)
@@ -101,8 +107,13 @@ export function AdminRecipeForm({ mode, initial }: Props) {
         : parsed.recipes
           ? parsed.recipes
           : [parsed];
-      await apiPost("/api/admin/recipes", { recipes: arr });
-      router.push("/admin/recipes");
+      const res = (await apiPost("/api/admin/recipes", {
+        recipes: arr,
+        upsert: bulkUpsert,
+      })) as { data?: { inserted?: number; updated?: number; count?: number } };
+      const ins = res.data?.inserted ?? res.data?.count ?? arr.length;
+      const upd = res.data?.updated ?? 0;
+      setBulkResult(`Imported ${ins} new, updated ${upd}.`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -138,23 +149,43 @@ export function AdminRecipeForm({ mode, initial }: Props) {
         <div className="card p-5 space-y-3">
           <p className="text-sm text-ink-soft">
             Paste a JSON array of recipes, or an object with a <code className="bg-cream px-1 rounded">recipes</code> key.
-            Same shape as <code className="bg-cream px-1 rounded">seed/content.json</code>.
+            With <strong>Upsert</strong> on, existing rows are matched by title (case-insensitive) and updated; new titles are inserted.
           </p>
           <textarea
             value={bulkJson}
             onChange={(e) => setBulkJson(e.target.value)}
-            placeholder={`[\n  {\n    "title": "Real-Food Smash Burger",\n    "ingredients": ["1 lb grass-fed ground beef", "..."],\n    "steps": ["Heat the pan", "..."],\n    "time_min": 20,\n    "difficulty": "medium",\n    "meal_type": "dinner",\n    "tags": ["beef", "burger"]\n  }\n]`}
+            placeholder={`[\n  {\n    "title": "Real-Food Smash Burger",\n    "description": "Crispy-edged smash burgers on cast iron…",\n    "ingredients": ["1 lb grass-fed ground beef", "..."],\n    "steps": ["Heat the pan", "..."],\n    "time_min": 20,\n    "difficulty": "medium",\n    "meal_type": "dinner",\n    "tags": ["beef", "burger"]\n  }\n]`}
             rows={18}
             className="w-full p-3 text-xs font-mono rounded-soft bg-paper border border-ink/10 outline-none focus:border-sunrise resize-none"
           />
+          <label className="inline-flex items-center gap-2 text-sm text-ink-soft cursor-pointer">
+            <input
+              type="checkbox"
+              checked={bulkUpsert}
+              onChange={(e) => setBulkUpsert(e.target.checked)}
+              className="w-4 h-4 accent-sunrise"
+            />
+            Upsert by title (update existing instead of failing on duplicate)
+          </label>
           {error && <p className="text-sm text-coral">{error}</p>}
-          <button
-            onClick={bulkUpload}
-            disabled={saving || bulkJson.trim().length < 5}
-            className="btn-primary"
-          >
-            {saving ? "Importing…" : "Import recipes"}
-          </button>
+          {bulkResult && <p className="text-sm text-emerald-700 font-semibold">{bulkResult}</p>}
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={bulkUpload}
+              disabled={saving || bulkJson.trim().length < 5}
+              className="btn-primary"
+            >
+              {saving ? "Importing…" : bulkUpsert ? "Import / update recipes" : "Import recipes"}
+            </button>
+            {bulkResult && (
+              <button
+                onClick={() => router.push("/admin/recipes")}
+                className="btn-secondary py-2"
+              >
+                Back to list →
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="card p-6 space-y-5">
@@ -164,6 +195,17 @@ export function AdminRecipeForm({ mode, initial }: Props) {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Homemade Real-Food Snickers Bars"
               className="w-full p-2.5 rounded-soft bg-paper border border-ink/10 outline-none focus:border-sunrise"
+            />
+          </Field>
+
+          <Field label="Description (1–2 sentences shown on recipe cards)">
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              placeholder="A no-bake, date-sweetened take on the classic Snickers bar with chewy almond nougat and dark chocolate."
+              className="w-full p-2.5 text-sm rounded-soft bg-paper border border-ink/10 outline-none focus:border-sunrise resize-none"
             />
           </Field>
 

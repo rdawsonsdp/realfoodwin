@@ -38,6 +38,7 @@ export default async function EditRecipePage({
         initial={{
           id: recipe.id,
           title: recipe.title,
+          description: recipe.description,
           ingredients: recipe.ingredients ?? [],
           steps: recipe.steps ?? [],
           time_min: recipe.time_min,

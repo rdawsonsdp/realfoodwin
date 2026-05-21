@@ -8,7 +8,7 @@ export default async function RecipesPage() {
   const supabase = createSupabaseServer();
   const { data: recipes } = await supabase
     .from("recipes")
-    .select("id, title, time_min, difficulty, meal_type, tags, ingredients")
+    .select("id, title, time_min, difficulty, meal_type, tags, ingredients, description")
     .order("created_at", { ascending: false });
 
   const rows: RecipeRow[] = recipes ?? [];

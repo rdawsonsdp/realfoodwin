@@ -13,6 +13,7 @@ export interface RecipeRow {
   meal_type: string | null;
   tags: string[] | null;
   ingredients: unknown;
+  description?: string | null;
 }
 
 interface Props {
@@ -248,6 +249,9 @@ function RecipeCard({
       <Link href={`/recipes/${r.id}`} className="block p-5 flex-1">
         <div className="text-xs text-ink-muted uppercase tracking-wider mb-1">{meta}</div>
         <h3 className="font-bold text-ink mb-2">{r.title}</h3>
+        {r.description && (
+          <p className="text-sm text-ink-soft line-clamp-3 leading-snug mb-2">{r.description}</p>
+        )}
         <div className="mt-1">
           <AverageStars avg={rating?.avg} count={rating?.count} />
         </div>

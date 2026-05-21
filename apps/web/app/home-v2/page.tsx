@@ -140,6 +140,15 @@ export default async function HomeV2() {
         <HomeViewToggle active="coach" />
         <HeroStrip firstName={firstName} slot={slot} now={now} />
 
+        {/* Free-form swap entry — the app's primary action for anything not
+            already on the playbook. */}
+        <section className="mb-8">
+          <h2 className="text-sm uppercase tracking-[0.16em] font-semibold text-paper/70 mb-3">
+            Swap something else
+          </h2>
+          <SwapHero isLoggedIn={true} />
+        </section>
+
         {/* The clipboard dashboard — today's play, the coach's call (chat), and
             yesterday's tape (educational look-back) in one frame at the top.
             This is the morning thing the user comes back to. */}
@@ -171,15 +180,6 @@ export default async function HomeV2() {
             ) : null
           }
         />
-
-        {/* Free-form swap entry — the app's primary action for anything not
-            already on the playbook. */}
-        <section className="mb-8">
-          <h2 className="text-sm uppercase tracking-[0.16em] font-semibold text-paper/70 mb-3">
-            Swap something else
-          </h2>
-          <SwapHero isLoggedIn={true} />
-        </section>
 
         <WeekChain stats={stats} />
         <RecentSwaps items={recentSwaps} />
