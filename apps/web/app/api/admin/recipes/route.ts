@@ -84,9 +84,18 @@ export async function POST(req: Request) {
   }
 
   const admin = adminClient();
-  const isBulk = "recipes" in parsed.data;
-  const list = isBulk ? parsed.data.recipes : [parsed.data];
-  const upsert = isBulk && parsed.data.upsert === true;
+  // Narrow the CreateBody union explicitly. `in` narrowing here isn't enough
+  // because TS keeps the original union in the else branch — assert via a
+  // typed local so the row-loop sees `Recipe` rather than the union.
+  type Recipe = z.infer<typeof RecipeSchema>;
+  type BulkBody = { recipes: Recipe[]; upsert?: boolean };
+  const payload = parsed.data as Recipe | BulkBody;
+  const bulk: BulkBody | null =
+    typeof payload === "object" && payload !== null && "recipes" in payload
+      ? (payload as BulkBody)
+      : null;
+  const list: Recipe[] = bulk ? bulk.recipes : [payload as Recipe];
+  const upsert = bulk?.upsert === true;
 
   const rows = list.map((r) => ({
     title: r.title,
