@@ -47,3 +47,18 @@ export class VoyageCallError extends GatewayError {
     this.name = "VoyageCallError";
   }
 }
+
+// Thrown when the user explicitly asked for a real-food PRODUCT and the
+// curated brand catalog has no match. The product-only goal must not fall
+// through to a fresh LLM generation, since the LLM would invent product
+// names that don't exist in the Real Food Win brand list.
+export class NoLibraryProductsError extends GatewayError {
+  constructor(query: string) {
+    super(
+      "NO_LIBRARY_PRODUCTS",
+      `We don't carry a real-food product that matches "${query}" yet.`,
+      { query },
+    );
+    this.name = "NoLibraryProductsError";
+  }
+}

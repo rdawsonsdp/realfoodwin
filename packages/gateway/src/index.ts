@@ -6,3 +6,4 @@ export * from "./context";
 export * from "./cache";
 export * from "./logging";
 export * from "./runners";
+export * from "./library-match";

@@ -9,7 +9,13 @@ import { embed } from "./llm/voyage";
 import { loadUserContext, composePromptBlocks } from "./context";
 import { logAgentCall, calculateCost } from "./logging";
 import { cacheSwap, getCachedSwap } from "./cache";
-import { SchemaValidationError } from "./errors";
+import { NoLibraryProductsError, SchemaValidationError } from "./errors";
+import {
+  matchLibrary,
+  type MatchedRecipe,
+  type MatchedProduct,
+  type SwapGoal,
+} from "./library-match";
 
 export type ClientPlatform = "ios" | "android" | "web";
 
@@ -39,6 +45,79 @@ export interface SwapGeneratorRunInput {
   skipCache?: boolean;
 }
 
+// Convert a curated library match into a SwapGenerator.OutputSchema-shaped
+// result. We don't try to fake the LLM's analysis fields (nutrition,
+// ingredient_analysis, tuned_for_you) — we stub them with a single honest
+// "from the Real Food Win library" line so the response shape stays valid
+// without inventing data. The UI can show extra detail when it exists; the
+// library hit is the curated content, that's the value.
+function buildSwapOutputFromLibrary(
+  recipe: MatchedRecipe | null,
+  products: MatchedProduct[],
+): SwapGenerator.SwapGeneratorOutput {
+  if (recipe) {
+    const ingredients = Array.isArray(recipe.ingredients)
+      ? (recipe.ingredients as Array<{
+          name?: string;
+          quantity?: string;
+          unit?: string;
+        }>).map((ing) => ({
+          name: String(ing.name ?? ""),
+          quantity: String(ing.quantity ?? ""),
+          ...(ing.unit ? { unit: String(ing.unit) } : {}),
+        }))
+      : [];
+    const steps = Array.isArray(recipe.steps)
+      ? (recipe.steps as unknown[]).map((s) => String(s))
+      : [];
+    const productAlternates = products.slice(0, 3).map((p) => ({
+      title: `${p.brand_name}: ${p.name}`,
+      narrative: p.description ?? "",
+      ...(p.product_url ? { product_url: p.product_url } : {}),
+      brand_name: p.brand_name,
+      ...(p.image_url ? { product_image_url: p.image_url } : {}),
+    }));
+    return {
+      title: recipe.title,
+      recipe: {
+        ingredients,
+        steps,
+        time_min: recipe.time_min ?? 0,
+        ...(recipe.meal_type ? { meal_type: recipe.meal_type } : {}),
+      },
+      narrative: recipe.description ?? "Curated from the Real Food Win recipe library.",
+      tuned_for_you_reasons: [
+        "Hand-picked from the Real Food Win recipe library",
+        "Whole-food ingredients only — no seed oils, no ultra-processed shortcuts",
+      ],
+      alternates: productAlternates,
+    };
+  }
+
+  const [primary, ...rest] = products;
+  if (!primary) throw new Error("buildSwapOutputFromLibrary called with empty match");
+  return {
+    title: `${primary.brand_name}: ${primary.name}`,
+    recipe: { ingredients: [], steps: [], time_min: 0 },
+    narrative:
+      primary.description ?? `${primary.brand_name} — curated from the Real Food Win brand list.`,
+    tuned_for_you_reasons: [
+      `From ${primary.brand_name}, a brand on the Real Food Win curated list`,
+      "Whole-food ingredients only",
+    ],
+    ...(primary.product_url ? { product_url: primary.product_url } : {}),
+    brand_name: primary.brand_name,
+    ...(primary.image_url ? { product_image_url: primary.image_url } : {}),
+    alternates: rest.slice(0, 3).map((p) => ({
+      title: `${p.brand_name}: ${p.name}`,
+      narrative: p.description ?? "",
+      ...(p.product_url ? { product_url: p.product_url } : {}),
+      brand_name: p.brand_name,
+      ...(p.image_url ? { product_image_url: p.image_url } : {}),
+    })),
+  };
+}
+
 function formatPreferences(p: SwapPreferencesInput | null | undefined): string {
   if (!p) return "";
   const lines: string[] = [];
@@ -60,6 +139,60 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
   if (input.userId && input.productId && !input.skipCache) {
     const hit = await getCachedSwap(input.userId, input.productId);
     if (hit) return { cached: true, swap: hit };
+  }
+
+  // Library-first matcher. Photo swaps need vision so they always hit Sonnet,
+  // but every text query gets a sub-2s curated lookup before we fall through
+  // to a fresh LLM generation. When the user explicitly asked for a PRODUCT
+  // and the brand catalog has no match, we surface "no products found" rather
+  // than letting Claude invent SKUs that aren't in our directory.
+  if (!input.image && input.request.trim().length >= 2) {
+    const goals: SwapGoal[] = (input.preferences?.goals as SwapGoal[] | undefined) ?? [];
+    const productOnly = goals.length === 1 && goals[0] === "product";
+    const libraryStart = Date.now();
+    try {
+      const match = await matchLibrary({ query: input.request, goals });
+      if (match.recipe || match.products.length > 0) {
+        const output = buildSwapOutputFromLibrary(match.recipe, match.products);
+        let saved = null;
+        if (input.userId) {
+          saved = await cacheSwap({
+            user_id: input.userId,
+            product_id: input.productId ?? null,
+            recipe: output.recipe,
+            nutrition: output.nutrition ?? {},
+            narrative: output.narrative,
+            output,
+            swap_target: input.request,
+          });
+        }
+        return {
+          cached: false,
+          swap: saved,
+          output,
+          latencyMs: Date.now() - libraryStart,
+          source: "library" as const,
+          libraryHit: {
+            recipeId: match.recipe?.id ?? null,
+            productIds: match.products.map((p) => p.id),
+            fromCache: match.cached,
+          },
+        };
+      }
+      // Only surface the explicit "no products found" message when the
+      // matcher actually had candidates to consider and Haiku rejected them
+      // all. If the library is empty (no embeddings yet, fresh deploy),
+      // fall through to the existing Sonnet path so the app stays useful.
+      if (productOnly && match.hadCandidates) {
+        throw new NoLibraryProductsError(input.request);
+      }
+    } catch (err) {
+      if (err instanceof NoLibraryProductsError) throw err;
+      // Any other matcher failure (missing embeddings, Voyage down, etc.) is
+      // a fallthrough — Sonnet still works.
+      // eslint-disable-next-line no-console
+      console.warn("[runSwapGenerator] library match failed, falling through:", err);
+    }
   }
 
   const ctx = await loadUserContext(input.userId);

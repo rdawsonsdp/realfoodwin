@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   runSwapGenerator,
   ModelNotFoundError,
+  NoLibraryProductsError,
   type SwapPreferencesInput,
 } from "@realfoodwin/gateway";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -125,11 +126,31 @@ export async function POST(req: Request) {
         swap: result.swap,
         output: "output" in result ? result.output : null,
         latency_ms: "latencyMs" in result ? result.latencyMs : null,
+        source: "source" in result ? result.source : "llm",
+        library_hit: "libraryHit" in result ? result.libraryHit : null,
       },
     });
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("[/api/swap]", err);
+    if (err instanceof NoLibraryProductsError) {
+      // Not a real failure — the user asked for a product, none of our
+      // curated brands carry it. 200 with a clean "no match" payload so the
+      // UI can show a helpful message instead of an error toast.
+      return NextResponse.json({
+        ok: true,
+        data: {
+          cached: false,
+          swap: null,
+          output: null,
+          latency_ms: null,
+          source: "library",
+          no_match: true,
+          message: err.message,
+          query: (err.details as { query?: string } | undefined)?.query ?? null,
+        },
+      });
+    }
     if (err instanceof ModelNotFoundError) {
       return NextResponse.json(
         {

@@ -34,6 +34,7 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [badModel, setBadModel] = useState<string | null>(null);
   const [showDismiss, setShowDismiss] = useState(false);
   const [showTrySurvey, setShowTrySurvey] = useState(false);
+  const [noProductsMessage, setNoProductsMessage] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
   async function runSwap(
@@ -56,12 +57,16 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
     setError(null);
     setErrorCode(null);
     setBadModel(null);
+    setNoProductsMessage(null);
     try {
       const data = await apiPost<{
         cached: boolean;
         swap: { id: string } | null;
         output: SwapResult["output"] | null;
         latency_ms: number | null;
+        source?: "library" | "llm";
+        no_match?: boolean;
+        message?: string;
       }>("/api/swap", {
         query: q,
         preferences: prefs,
@@ -72,6 +77,17 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
           : {}),
         ...(opts?.feedback ? { feedback: opts.feedback } : {}),
       });
+
+      // Product-only goal + no curated brand match: don't show a swap card —
+      // show an honest "we don't carry that" message instead so the AI never
+      // invents brand names.
+      if (data.no_match) {
+        setNoProductsMessage(
+          data.message ?? "We don't carry a real-food product that matches that yet.",
+        );
+        setResult(null);
+        return;
+      }
 
       const nextResult: SwapResult = {
         query: q || "(photo)",
@@ -358,6 +374,19 @@ export function SwapHero({ isLoggedIn }: { isLoggedIn: boolean }) {
           <strong>Something went wrong:</strong> {error}
         </div>
       ) : null}
+
+      {noProductsMessage && (
+        <div className="max-w-2xl mx-auto card p-5 border border-honey/40 bg-honey/10 text-ink">
+          <p className="font-bold text-base mb-1">No real-food products from our brand list match yet.</p>
+          <p className="text-sm text-ink-soft">
+            {noProductsMessage}{" "}
+            <Link href="/brands" className="text-coral font-semibold underline">
+              Browse all brands
+            </Link>{" "}
+            or uncheck <em>Find a real food product</em> in preferences to get a recipe instead.
+          </p>
+        </div>
+      )}
 
       {loading && <CookingAnimation />}
     </div>
