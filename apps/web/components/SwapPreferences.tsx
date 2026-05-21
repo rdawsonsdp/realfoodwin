@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 // Per-swap preferences that augment whatever's stored on the user's profile.
 // Sent as a structured object to /api/swap and stitched into the AI prompt.
@@ -89,10 +90,26 @@ export function SwapPreferences({ value, onChange, disabled }: Props) {
       </div>
 
       {expanded && (
-        <fieldset
-          disabled={disabled}
-          className="card p-5 mt-3 space-y-5 text-sm disabled:opacity-60"
-        >
+        <div className="card mt-3 overflow-hidden">
+          {/* Persistent-preferences banner. Sits outside the fieldset so it
+              doesn't go opaque when the form is disabled mid-submit, and so the
+              CTA is always tappable. */}
+          <div className="flex items-center justify-between gap-3 bg-cream/40 px-5 py-3 border-b border-ink/10">
+            <p className="text-xs text-ink-soft leading-snug">
+              These chips only apply to <strong>this swap</strong>. To set permanent preferences (allergies, diet style, etc.), edit your profile.
+            </p>
+            <Link
+              href="/settings"
+              className="inline-flex items-center gap-1.5 rounded-pill bg-sunrise text-white text-xs font-semibold px-3 py-1.5 hover:brightness-95 whitespace-nowrap shadow-warm"
+            >
+              <EditIcon />
+              <span>Edit profile</span>
+            </Link>
+          </div>
+          <fieldset
+            disabled={disabled}
+            className="p-5 space-y-5 text-sm disabled:opacity-60"
+          >
           <Section label="What do you want?">
             <div className="flex flex-wrap gap-4">
               <Check
@@ -200,9 +217,30 @@ export function SwapPreferences({ value, onChange, disabled }: Props) {
               )}
             </div>
           </Section>
-        </fieldset>
+          </fieldset>
+        </div>
       )}
     </div>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
   );
 }
 
