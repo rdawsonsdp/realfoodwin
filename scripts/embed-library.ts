@@ -2,11 +2,14 @@
  * One-time backfill: embed every recipe and brand_product so the swap
  * matcher can do pgvector cosine top-N before calling Claude.
  *
+ * Uses batched Voyage requests (128 inputs per call) so 415+ rows backfill in
+ * ~5 API calls — comfortably within the free-tier 3 RPM / 10K TPM limit.
+ *
  * Run:
  *   cd apps/web && pnpm exec tsx ../../scripts/embed-library.ts
  *
- * Re-running is safe — by default it only embeds rows where embedding is
- * still null. Pass --all to overwrite.
+ * Idempotent: only embeds rows where embedding is null. Pass --all to
+ * overwrite everything.
  */
 
 import "dotenv/config";
@@ -15,7 +18,7 @@ loadEnv({ path: ".env.local" });
 loadEnv({ path: "apps/web/.env.local" });
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { embed } from "@realfoodwin/gateway";
+import { embedBatch } from "@realfoodwin/gateway";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -30,61 +33,66 @@ const admin: SupabaseClient = createClient(SUPABASE_URL, SERVICE_ROLE, {
 
 const overwrite = process.argv.includes("--all");
 
-async function processWithConcurrency<T>(
-  items: T[],
-  worker: (item: T, idx: number) => Promise<void>,
-  concurrency: number,
-): Promise<void> {
-  let next = 0;
-  async function pull() {
-    while (true) {
-      const i = next++;
-      if (i >= items.length) return;
-      await worker(items[i]!, i);
-    }
-  }
-  await Promise.all(Array.from({ length: concurrency }, () => pull()));
-}
+// Voyage allows up to 128 inputs and ~120K tokens per request. Our recipe /
+// product texts are short (<200 tokens each), so 100 per batch is safe.
+const BATCH_SIZE = 100;
+// Free-tier rate limit is 3 RPM; pace ourselves at 25s between batches to
+// stay well under that.
+const BETWEEN_BATCH_MS = 25_000;
 
 interface Row {
   id: string;
   text: string;
 }
 
-async function embedTable(
-  table: "recipes" | "brand_products",
-  rows: Row[],
-): Promise<{ ok: number; failed: number }> {
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function embedTable(table: "recipes" | "brand_products", rows: Row[]): Promise<{ ok: number; failed: number }> {
   let ok = 0;
   let failed = 0;
-  await processWithConcurrency(
-    rows,
-    async (r, idx) => {
-      try {
-        const { vector } = await embed(r.text, "document");
+  for (let batchIdx = 0; batchIdx * BATCH_SIZE < rows.length; batchIdx++) {
+    const batch = rows.slice(batchIdx * BATCH_SIZE, (batchIdx + 1) * BATCH_SIZE);
+    if (batchIdx > 0) {
+      console.log(`  [${table}] waiting ${BETWEEN_BATCH_MS / 1000}s to stay under rate limit…`);
+      await sleep(BETWEEN_BATCH_MS);
+    }
+    try {
+      const vectors = await embedBatch(
+        batch.map((r) => r.text),
+        "document",
+      );
+      // Persist sequentially — Supabase updates are cheap, no need to batch.
+      for (let i = 0; i < batch.length; i++) {
+        const row = batch[i]!;
+        const v = vectors[i];
+        if (!v) {
+          failed++;
+          continue;
+        }
         const { error } = await admin
           .from(table)
-          .update({ embedding: vector as unknown as string })
-          .eq("id", r.id);
-        if (error) throw new Error(error.message);
-        ok++;
-        if ((idx + 1) % 20 === 0) {
-          console.log(`  [${table}] ${idx + 1}/${rows.length} done`);
+          .update({ embedding: v.vector as unknown as string })
+          .eq("id", row.id);
+        if (error) {
+          failed++;
+          console.error(`  ✗ [${table}] ${row.text.slice(0, 50)}: ${error.message}`);
+        } else {
+          ok++;
         }
-      } catch (err) {
-        failed++;
-        console.error(
-          `  ✗ [${table}] ${r.text.slice(0, 50)}: ${err instanceof Error ? err.message : String(err)}`,
-        );
       }
-    },
-    4,
-  );
+      console.log(`  [${table}] batch ${batchIdx + 1}: embedded ${batch.length} rows (running total ${ok})`);
+    } catch (err) {
+      failed += batch.length;
+      console.error(`  ✗ [${table}] batch ${batchIdx + 1} failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
   return { ok, failed };
 }
 
 async function fetchRecipes(): Promise<Row[]> {
-  let q = admin.from("recipes").select("id, title, description, embedding");
+  let q = admin.from("recipes").select("id, title, description");
   if (!overwrite) q = q.is("embedding", null);
   const { data, error } = await q;
   if (error) throw new Error(`recipes fetch: ${error.message}`);
@@ -95,9 +103,7 @@ async function fetchRecipes(): Promise<Row[]> {
 }
 
 async function fetchProducts(): Promise<Row[]> {
-  let q = admin
-    .from("brand_products")
-    .select("id, name, description, brands(name), embedding");
+  let q = admin.from("brand_products").select("id, name, description, brands(name)");
   if (!overwrite) q = q.is("embedding", null);
   const { data, error } = await q;
   if (error) throw new Error(`brand_products fetch: ${error.message}`);
@@ -119,12 +125,19 @@ async function main() {
 
   console.log("\nFetching recipes…");
   const recipes = await fetchRecipes();
-  console.log(`  ${recipes.length} recipes to embed`);
+  console.log(`  ${recipes.length} recipes to embed (${Math.ceil(recipes.length / BATCH_SIZE)} batches)`);
   const recipeResult = await embedTable("recipes", recipes);
+
+  if (recipes.length > 0) {
+    console.log(`  waiting ${BETWEEN_BATCH_MS / 1000}s before products…`);
+    await sleep(BETWEEN_BATCH_MS);
+  }
 
   console.log("\nFetching brand_products…");
   const products = await fetchProducts();
-  console.log(`  ${products.length} brand_products to embed`);
+  console.log(
+    `  ${products.length} brand_products to embed (${Math.ceil(products.length / BATCH_SIZE)} batches)`,
+  );
   const productResult = await embedTable("brand_products", products);
 
   const totalMin = ((Date.now() - start) / 60000).toFixed(1);
