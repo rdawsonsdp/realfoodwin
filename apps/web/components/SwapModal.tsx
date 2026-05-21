@@ -63,7 +63,22 @@ export function SwapModal({ open, onClose }: Props) {
   }, [open]);
 
   async function handleFile(file: File) {
-    const compressed = await compress(file);
+    // Set loading immediately so the user sees feedback while we compress —
+    // iOS HEIC decode can take 1–3 seconds on older phones.
+    setLoading(true);
+    setError(null);
+    let compressed: PickedImage;
+    try {
+      compressed = await compress(file);
+    } catch (err) {
+      setLoading(false);
+      setError(
+        err instanceof Error
+          ? `Couldn't read that photo (${err.message}). Try choosing from your library instead.`
+          : "Couldn't read that photo. Try choosing from your library.",
+      );
+      return;
+    }
     setImage(compressed);
     // Auto-submit on photo capture — the user already framed it; another tap
     // would feel like friction. Text/voice still require an explicit Submit.
@@ -77,16 +92,33 @@ export function SwapModal({ open, onClose }: Props) {
     }
     setLoading(true);
     setError(null);
+    // Hard client timeout: the Anthropic image call can take 30–45s, so we
+    // give the request 90s. If we don't get a response in that window the
+    // user is told plainly rather than staring at a frozen modal forever.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90_000);
     try {
-      const data = await apiPost<{
-        swap: { id: string } | null;
-      }>("/api/swap", {
-        query: q.trim(),
-        ...(img ? { image: { media_type: img.mediaType, data: img.data } } : {}),
+      const res = await fetch("/api/swap", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query: q.trim(),
+          ...(img ? { image: { media_type: img.mediaType, data: img.data } } : {}),
+        }),
+        signal: controller.signal,
+        cache: "no-store",
       });
-      if (data.swap?.id) {
+      const json = (await res.json().catch(() => null)) as {
+        data?: { swap?: { id: string } | null };
+        error?: { message?: string; code?: string };
+      } | null;
+      if (!res.ok) {
+        throw new Error(json?.error?.message ?? `Request failed (${res.status})`);
+      }
+      const swapId = json?.data?.swap?.id;
+      if (swapId) {
         onClose();
-        router.push(`/swap/${data.swap.id}`);
+        router.push(`/swap/${swapId}`);
       } else {
         // Some flows (legacy product hits) don't return a swap id — fall back to
         // routing home with the query so the SwapHero there can render results.
@@ -94,8 +126,18 @@ export function SwapModal({ open, onClose }: Props) {
         router.push(`/?q=${encodeURIComponent(q.trim())}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const aborted =
+        (err instanceof DOMException && err.name === "AbortError") ||
+        (err instanceof Error && /aborted/i.test(err.message));
+      setError(
+        aborted
+          ? "That took too long — the AI didn't respond in 90 seconds. Try again, or type the product name instead."
+          : err instanceof Error
+          ? err.message
+          : String(err),
+      );
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }
@@ -134,16 +176,25 @@ export function SwapModal({ open, onClose }: Props) {
             type="button"
             onClick={() => cameraInputRef.current?.click()}
             disabled={loading}
-            className="w-full rounded-soft bg-coral hover:brightness-95 text-white px-5 py-6 md:py-7 shadow-warm transition-all active:scale-[0.99] disabled:opacity-60"
+            aria-busy={loading}
+            className="w-full rounded-soft bg-coral hover:brightness-95 text-white px-5 py-6 md:py-7 shadow-warm transition-all active:scale-[0.99] disabled:opacity-90"
           >
             <div className="flex items-center justify-center gap-3">
-              <span aria-hidden className="text-3xl md:text-4xl leading-none">
-                📷
-              </span>
+              {loading ? (
+                <Spinner />
+              ) : (
+                <span aria-hidden className="text-3xl md:text-4xl leading-none">
+                  📷
+                </span>
+              )}
               <div className="text-left">
-                <p className="text-lg md:text-xl font-bold">Snap a photo</p>
+                <p className="text-lg md:text-xl font-bold">
+                  {loading ? "Analyzing your photo…" : "Snap a photo"}
+                </p>
                 <p className="text-sm font-normal opacity-90">
-                  The fastest way — point at any food
+                  {loading
+                    ? "This usually takes 10–30 seconds."
+                    : "The fastest way — point at any food"}
                 </p>
               </div>
             </div>
@@ -277,20 +328,40 @@ export function SwapModal({ open, onClose }: Props) {
   );
 }
 
+function Spinner() {
+  return (
+    <span
+      role="status"
+      aria-label="Loading"
+      className="inline-block w-7 h-7 md:w-8 md:h-8 rounded-full border-[3px] border-white/40 border-t-white animate-spin"
+    />
+  );
+}
+
 // JPEG compression — same algorithm as the existing PhotoUploadButton so the
-// modal stays consistent with the home-page swap input.
+// modal stays consistent with the home-page swap input. iOS Safari can deliver
+// HEIC files that createImageBitmap can't decode; we fall back to <img>+canvas
+// so the user still gets a JPEG to send to the API.
 async function compress(file: File): Promise<PickedImage> {
-  const bitmap = await createImageBitmap(file);
+  let src: ImageBitmap | HTMLImageElement;
+  try {
+    src = await createImageBitmap(file);
+  } catch {
+    src = await loadViaImg(file);
+  }
+  const srcW = src instanceof HTMLImageElement ? src.naturalWidth : src.width;
+  const srcH = src instanceof HTMLImageElement ? src.naturalHeight : src.height;
+  if (!srcW || !srcH) throw new Error("Image had no dimensions");
   const maxSide = 1024;
-  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
+  const scale = Math.min(1, maxSide / Math.max(srcW, srcH));
+  const w = Math.round(srcW * scale);
+  const h = Math.round(srcH * scale);
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas unavailable");
-  ctx.drawImage(bitmap, 0, 0, w, h);
+  ctx.drawImage(src, 0, 0, w, h);
   const blob: Blob = await new Promise((resolve, reject) =>
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
@@ -300,6 +371,27 @@ async function compress(file: File): Promise<PickedImage> {
   );
   const data = await blobToBase64(blob);
   return { mediaType: "image/jpeg", data, previewUrl: URL.createObjectURL(blob) };
+}
+
+// Fallback path for browsers (mostly Safari) that can't pass HEIC through
+// createImageBitmap. We render the file via a normal <img> tag first, which
+// triggers the browser's native HEIC decoder, then read the pixels off a
+// canvas. The decoded image is always raster RGB so the subsequent JPEG
+// re-encode in compress() is straightforward.
+function loadViaImg(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Browser couldn't decode the image"));
+    };
+    img.src = url;
+  });
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
