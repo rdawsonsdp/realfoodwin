@@ -3,12 +3,27 @@
 // SwapFab — the always-on swap entry. Floating camera button at the bottom-
 // right, sitting above the mobile tab bar (which the body reserves 5rem for
 // via pb-20). Tapping opens the SwapModal.
+//
+// Hidden on /home-v3 since that surface already shows a full-bleed swap
+// composer (SwapHero); a second floating button there is redundant.
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { SwapModal } from "./SwapModal";
 
+const HIDE_ON_PATHS = ["/home-v3"];
+
 export function SwapFab() {
+  const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
+
+  if (
+    HIDE_ON_PATHS.some(
+      (p) => pathname === p || pathname.startsWith(`${p}/`),
+    )
+  ) {
+    return null;
+  }
 
   return (
     <>
