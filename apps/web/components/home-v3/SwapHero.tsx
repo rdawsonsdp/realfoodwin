@@ -17,15 +17,17 @@ import {
   EMPTY_PREFS,
   type SwapPrefsValue,
 } from "@/components/SwapPreferences";
+import { ThemePicker } from "@/components/home-v3/ThemePicker";
 import { compressImage, type PickedImage } from "@/lib/image-compress";
 import type { Quote } from "@/lib/quotes";
 
 interface Props {
   greeting: string;
   quote: Quote;
+  themeId: string;
 }
 
-export function SwapHero({ greeting, quote }: Props) {
+export function SwapHero({ greeting, quote, themeId }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -171,7 +173,7 @@ export function SwapHero({ greeting, quote }: Props) {
   return (
     <>
     <section className="text-center">
-      <p className="text-paper/70 text-sm md:text-base font-medium mb-4">
+      <p className="text-white text-lg md:text-2xl font-extrabold tracking-tight mb-5 drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">
         {greeting}
       </p>
       <div
@@ -376,12 +378,15 @@ export function SwapHero({ greeting, quote }: Props) {
             </button>
           </div>
           <div className="p-4 md:p-6">
-            <SwapPreferences
-              value={prefs}
-              onChange={setPrefs}
-              disabled={loading}
-              defaultExpanded
-            />
+            <ThemePicker currentThemeId={themeId} />
+            <div className="mt-6 border-t border-ink/10 pt-4">
+              <SwapPreferences
+                value={prefs}
+                onChange={setPrefs}
+                disabled={loading}
+                defaultExpanded
+              />
+            </div>
           </div>
         </div>
       </div>

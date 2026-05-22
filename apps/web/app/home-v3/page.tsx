@@ -16,6 +16,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { getSwapCounts } from "@/lib/swap-counts";
 import { getMealSlot, slotGreeting } from "@/lib/meal-slot";
 import { getQuoteForToday } from "@/lib/quotes";
+import { getTheme } from "@/lib/home-themes";
 
 export const dynamic = "force-dynamic";
 
@@ -40,24 +41,36 @@ export default async function HomeV3() {
   const now = new Date();
   const slot = getMealSlot(now);
 
-  const [userRow, counts] = await Promise.all([
+  const [userRow, counts, prefsRow] = await Promise.all([
     supabase.from("users").select("display_name").eq("id", user.id).maybeSingle(),
     getSwapCounts(user.id, now),
+    supabase
+      .from("user_preferences")
+      .select("ui_prefs")
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
 
   const firstName = firstNameFrom(userRow.data?.display_name ?? null, user.email);
   const greeting = `${slotGreeting(slot)}, ${firstName}.`;
   const quote = getQuoteForToday(now);
+  const uiPrefs = (prefsRow.data?.ui_prefs ?? {}) as { theme?: string };
+  const theme = getTheme(uiPrefs.theme);
+  const toneClass = theme.tone === "ink" ? "text-ink" : "text-paper";
 
   return (
-    <div className="min-h-screen bg-ink text-paper">
+    <div className={`min-h-screen ${toneClass}`} style={{ background: theme.background }}>
       <Nav />
       <main className="max-w-2xl mx-auto px-4 md:px-6 py-8 md:py-14">
         <HomeViewToggle active="swap" />
-        <SwapHero greeting={greeting} quote={quote} />
+        <SwapHero greeting={greeting} quote={quote} themeId={theme.id} />
         <SwapCounter counts={counts} />
       </main>
-      <footer className="text-center text-paper/40 text-xs py-8">
+      <footer
+        className={`text-center text-xs py-8 ${
+          theme.tone === "ink" ? "text-ink/60" : "text-paper/40"
+        }`}
+      >
         One swap at a time.
       </footer>
     </div>
