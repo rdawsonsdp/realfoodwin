@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Scorecard } from "@/components/Scorecard";
-import { KitchenBrowser, type KitchenItem } from "@/components/KitchenBrowser";
+import { type KitchenItem } from "@/components/KitchenBrowser";
+import { KitchenTabs } from "@/components/KitchenTabs";
+import { type RecipeRow } from "@/components/RecipeLibrary";
 import { RecentlyDeleted } from "@/components/RecentlyDeleted";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -26,12 +28,20 @@ type KitchenEntry = {
   recipe_variants: { modification: string | null; recipe: { title?: string; meal_type?: string } | null } | null;
 };
 
-export default async function KitchenPage() {
+export default async function KitchenPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const supabase = createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in?next=" + encodeURIComponent("/kitchen"));
 
-  const [entriesRes, swapsCountRes, madeItCountRes, ratingsRes, madeItRes] = await Promise.all([
+  const { tab } = await searchParams;
+  const initialTab: "mine" | "real-food" =
+    tab === "real-food" ? "real-food" : "mine";
+
+  const [entriesRes, swapsCountRes, madeItCountRes, ratingsRes, madeItRes, recipesRes] = await Promise.all([
     supabase
       .from("recipe_box_entries")
       .select(
@@ -54,7 +64,28 @@ export default async function KitchenPage() {
       .select("target_id, target_type")
       .eq("user_id", user.id)
       .eq("event_type", "made_it_loved"),
+    supabase
+      .from("recipes")
+      .select("id, title, time_min, difficulty, meal_type, tags, ingredients, description")
+      .order("created_at", { ascending: false }),
   ]);
+
+  const recipes: RecipeRow[] = recipesRes.data ?? [];
+  const recipeIds = recipes.map((r) => r.id);
+  const recipeRatings: Record<string, { avg: number; count: number }> = {};
+  if (recipeIds.length > 0) {
+    const { data: aggs } = await supabase
+      .from("recipe_ratings_aggregate")
+      .select("target_id, avg_stars, rating_count")
+      .eq("target_type", "recipe")
+      .in("target_id", recipeIds);
+    for (const a of aggs ?? []) {
+      recipeRatings[a.target_id] = {
+        avg: Number(a.avg_stars),
+        count: a.rating_count,
+      };
+    }
+  }
 
   const entries = (entriesRes.data ?? []) as unknown as KitchenEntry[];
   const swapCount = swapsCountRes.count ?? 0;
@@ -148,9 +179,9 @@ export default async function KitchenPage() {
         <header className="mb-6 md:mb-8 flex items-start gap-3 md:gap-4 flex-wrap">
           <RecentlyDeleted />
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-paper">My Kitchen</h1>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-paper">The Kitchen</h1>
             <p className="text-paper/80 mt-2 text-sm md:text-base">
-              {entries.length} saved {entries.length === 1 ? "recipe" : "recipes"} · organized by meal, sortable by rating, searchable.
+              {entries.length} saved · search both your kitchen and the Real Food Kitchen.
             </p>
           </div>
         </header>
@@ -178,15 +209,19 @@ export default async function KitchenPage() {
           pointsToNextLevel={POINTS_PER_LEVEL}
         />
 
-        {items.length === 0 ? (
-          <div className="card p-6 md:p-10 text-center">
+        <KitchenTabs
+          myItems={items}
+          recipes={recipes}
+          ratings={recipeRatings}
+          initialTab={initialTab}
+        />
+        {items.length === 0 && initialTab === "mine" && (
+          <div className="card p-6 md:p-10 text-center mt-4">
             <p className="text-ink-soft mb-4">
               Your kitchen is quiet. Let's fix that — find a swap and save it.
             </p>
-            <Link href="/" className="btn-primary">Find a swap</Link>
+            <Link href="/home-v3" className="btn-primary">Find a swap</Link>
           </div>
-        ) : (
-          <KitchenBrowser items={items} />
         )}
       </main>
     </>

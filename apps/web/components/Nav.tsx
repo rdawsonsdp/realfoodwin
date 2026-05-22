@@ -16,11 +16,10 @@ export async function Nav() {
   // drawer — keeps the two presentations in sync without duplicating logic.
   const links: NavLink[] = [
     { href: "/", label: "Home" },
-    { href: "/recipes", label: "Recipes" },
     { href: "/brands", label: "Brands" },
     ...(user
-      ? ([{ href: "/kitchen", label: "My Kitchen" }] as NavLink[])
-      : []),
+      ? ([{ href: "/kitchen", label: "The Kitchen" }] as NavLink[])
+      : [{ href: "/kitchen?tab=real-food", label: "Recipes" } as NavLink]),
     ...(user && isAdmin
       ? ([{ href: "/admin", label: "Admin", tone: "warn" }] as NavLink[])
       : []),

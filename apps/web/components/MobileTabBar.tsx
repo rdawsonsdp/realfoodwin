@@ -20,7 +20,7 @@ export function MobileTabBar({ isLoggedIn }: { isLoggedIn: boolean }) {
   const tabs = [
     { href: isLoggedIn ? "/home-v3" : "/", label: "Swap", icon: "🔍" },
     { href: "/kitchen", label: "Kitchen", icon: "🍳" },
-    { href: "/recipes", label: "Recipes", icon: "🥬" },
+    { href: "/brands", label: "Brands", icon: "🏷" },
     isLoggedIn
       ? { href: "/settings", label: "Account", icon: "👤" }
       : { href: "/sign-in", label: "Sign in", icon: "👤" },
