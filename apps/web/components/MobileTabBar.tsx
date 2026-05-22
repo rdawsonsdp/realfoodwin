@@ -13,10 +13,12 @@ export function MobileTabBar({ isLoggedIn }: { isLoggedIn: boolean }) {
     return null;
   }
 
-  // The four most-used destinations. Account swaps to Sign in when logged out
-  // so the tab never goes to a forced-auth redirect for an anonymous visitor.
+  // The four most-used destinations. The first tab is the swap-first home
+  // (/home-v3 for logged-in users, the public landing for anonymous). Account
+  // swaps to Sign in when logged out so the tab never goes to a forced-auth
+  // redirect for an anonymous visitor.
   const tabs = [
-    { href: "/", label: "Home", icon: "🏠" },
+    { href: isLoggedIn ? "/home-v3" : "/", label: "Swap", icon: "🔍" },
     { href: "/kitchen", label: "Kitchen", icon: "🍳" },
     { href: "/recipes", label: "Recipes", icon: "🥬" },
     isLoggedIn
@@ -26,6 +28,10 @@ export function MobileTabBar({ isLoggedIn }: { isLoggedIn: boolean }) {
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
+    // Swap tab should light up on both the home-v3 surface and the public landing.
+    if (href === "/home-v3") {
+      return pathname === "/" || pathname === "/home-v3" || pathname.startsWith("/home-v3/");
+    }
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
