@@ -1,10 +1,10 @@
-// Segmented toggle for switching between the classic home layout and the v2
-// coach view. Shown at the top of both pages so the choice is always visible.
+// Segmented toggle between the swap-first home (/home-v3) and the coach
+// view (/home-v2). The classic layout has been retired.
 
 import Link from "next/link";
 
 interface Props {
-  active: "classic" | "coach" | "swap";
+  active: "coach" | "swap";
 }
 
 export function HomeViewToggle({ active }: Props) {
@@ -20,9 +20,6 @@ export function HomeViewToggle({ active }: Props) {
         </Link>
         <Link href="/home-v2" className={pill(active === "coach")}>
           Coach
-        </Link>
-        <Link href="/" className={pill(active === "classic")}>
-          Classic
         </Link>
       </div>
     </div>
