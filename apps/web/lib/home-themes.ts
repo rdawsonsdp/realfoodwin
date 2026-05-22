@@ -263,12 +263,37 @@ export const HOME_THEMES: HomeTheme[] = [
 ];
 
 export const DEFAULT_THEME_ID = "slate";
+export const CUSTOM_THEME_ID = "custom";
 
 export function getTheme(id: string | null | undefined): HomeTheme {
   if (!id) return HOME_THEMES[0]!;
   return HOME_THEMES.find((t) => t.id === id) ?? HOME_THEMES[0]!;
 }
 
+/**
+ * Build a theme object from a user-uploaded image (data URL or http URL).
+ * Centered, cover-fit so the background still looks intentional on any
+ * viewport size.
+ */
+export function buildCustomTheme(imageUrl: string): HomeTheme {
+  const bg = `#1B1F2C url("${imageUrl}") center/cover no-repeat fixed`;
+  return {
+    id: CUSTOM_THEME_ID,
+    name: "Your photo",
+    description: "Custom background from your library.",
+    background: bg,
+    tone: "paper",
+    swatch: bg,
+  };
+}
+
 export interface UiPrefs {
   theme?: string;
+  /**
+   * User-uploaded custom background. Stored inline as a `data:` URL so the
+   * server can return it in a single ui_prefs read. Capped client-side
+   * (~400KB) to keep the row small; promote to Supabase Storage if usage
+   * pushes that toward the JSONB limits.
+   */
+  custom_bg?: string;
 }

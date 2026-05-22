@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-// Falling-food confetti — fires when the user completes a rating, save, or
-// made-it action. Emoji-based, fully CSS-animated, no deps. Each piece gets
-// per-instance CSS variables so we share a single keyframe.
+// Quick burst of food emoji from the center of the screen. Fires once per
+// `active` toggle (false → true). No raining/falling — pieces shoot outward
+// on a random angle, fade, and disappear in under a second.
 
 const FOODS = [
   "🫐", "🍓", "🍊", "🍎", "🥕", "🥬", "🥑", "🍋", "🍇",
@@ -14,13 +14,13 @@ const FOODS = [
 interface Piece {
   id: number;
   food: string;
-  x: number;
   size: number;
-  delay: number;
-  duration: number;
-  drift: number;
-  rotateStart: number;
+  /** Distance from origin in vmin. */
+  distance: number;
+  /** Direction in degrees. */
+  angle: number;
   rotateEnd: number;
+  delay: number;
 }
 
 interface Props {
@@ -29,38 +29,30 @@ interface Props {
   onDone?: () => void;
 }
 
-// Renders nothing when inactive. When toggled active, fires once. Re-fires when
-// the `active` prop transitions false→true (parent should toggle).
-
-export function FoodConfetti({ active, count = 36, onDone }: Props) {
+export function FoodConfetti({ active, count = 22, onDone }: Props) {
   const [runKey, setRunKey] = useState(0);
 
   useEffect(() => {
-    if (active) {
-      setRunKey((k) => k + 1);
-    }
+    if (active) setRunKey((k) => k + 1);
   }, [active]);
 
-  // Generate pieces fresh each run so each celebration looks different.
   const pieces = useMemo<Piece[]>(() => {
     if (!active) return [];
     return Array.from({ length: count }, (_, i) => ({
       id: i,
       food: FOODS[Math.floor(Math.random() * FOODS.length)]!,
-      x: Math.random() * 100,
-      size: 18 + Math.random() * 26,
-      delay: Math.random() * 0.7,
-      duration: 2.5 + Math.random() * 2.5,
-      drift: -25 + Math.random() * 50,
-      rotateStart: Math.random() * 360,
+      size: 22 + Math.random() * 18,
+      distance: 22 + Math.random() * 22,
+      angle: Math.random() * 360,
       rotateEnd: Math.random() * 720 - 360,
+      delay: Math.random() * 0.05,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runKey]);
 
   useEffect(() => {
     if (!active) return;
-    const t = setTimeout(() => onDone?.(), 5500);
+    const t = setTimeout(() => onDone?.(), 900);
     return () => clearTimeout(t);
   }, [active, runKey, onDone]);
 
@@ -71,38 +63,47 @@ export function FoodConfetti({ active, count = 36, onDone }: Props) {
       className="fixed inset-0 z-[100] pointer-events-none overflow-hidden"
       aria-hidden
     >
-      {pieces.map((p) => (
-        <span
-          key={`${runKey}-${p.id}`}
-          className="absolute select-none"
-          style={
-            {
-              left: `${p.x}vw`,
-              top: "-10vh",
-              fontSize: `${p.size}px`,
-              willChange: "transform, opacity",
-              animation: `food-fall ${p.duration}s ${p.delay}s ease-in forwards`,
-              ["--rs"]: `${p.rotateStart}deg`,
-              ["--re"]: `${p.rotateEnd}deg`,
-              ["--drift"]: `${p.drift}vw`,
-            } as React.CSSProperties
-          }
-        >
-          {p.food}
-        </span>
-      ))}
+      {pieces.map((p) => {
+        const rad = (p.angle * Math.PI) / 180;
+        const tx = `${Math.cos(rad) * p.distance}vmin`;
+        const ty = `${Math.sin(rad) * p.distance}vmin`;
+        return (
+          <span
+            key={`${runKey}-${p.id}`}
+            className="absolute select-none"
+            style={
+              {
+                left: "50%",
+                top: "50%",
+                fontSize: `${p.size}px`,
+                willChange: "transform, opacity",
+                animation: `food-burst 800ms ${p.delay}s cubic-bezier(0.16, 0.84, 0.44, 1) forwards`,
+                ["--tx"]: tx,
+                ["--ty"]: ty,
+                ["--re"]: `${p.rotateEnd}deg`,
+              } as React.CSSProperties
+            }
+          >
+            {p.food}
+          </span>
+        );
+      })}
       <style jsx global>{`
-        @keyframes food-fall {
+        @keyframes food-burst {
           0% {
-            transform: translate(0, 0) rotate(var(--rs, 0deg));
-            opacity: 1;
+            transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+            opacity: 0;
           }
-          80% {
+          15% {
             opacity: 1;
           }
           100% {
-            transform: translate(var(--drift, 0vw), 115vh) rotate(var(--re, 360deg));
-            opacity: 0.6;
+            transform: translate(
+                calc(-50% + var(--tx, 0)),
+                calc(-50% + var(--ty, 0))
+              )
+              scale(1) rotate(var(--re, 360deg));
+            opacity: 0;
           }
         }
       `}</style>

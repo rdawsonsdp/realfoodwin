@@ -1,19 +1,39 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { HOME_THEMES } from "@/lib/home-themes";
+import { HOME_THEMES, CUSTOM_THEME_ID } from "@/lib/home-themes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const Schema = z.object({
-  theme: z
-    .string()
-    .refine((id) => HOME_THEMES.some((t) => t.id === id), {
-      message: "Unknown theme id",
-    })
-    .optional(),
-});
+// Max custom-background payload (base64). 400KB keeps the ui_prefs row well
+// under the JSONB sweet spot. The client compresses before sending, but we
+// enforce here too so a hostile client can't bloat the row.
+const MAX_CUSTOM_BG_BYTES = 400 * 1024;
+
+const Schema = z
+  .object({
+    theme: z
+      .string()
+      .refine(
+        (id) =>
+          id === CUSTOM_THEME_ID || HOME_THEMES.some((t) => t.id === id),
+        { message: "Unknown theme id" },
+      )
+      .optional(),
+    custom_bg: z
+      .string()
+      .max(MAX_CUSTOM_BG_BYTES * 2, { message: "Background image too large" })
+      .regex(/^data:image\/(jpeg|png|webp);base64,/, {
+        message: "Custom background must be a base64 image data URL",
+      })
+      .nullable()
+      .optional(),
+  })
+  .refine(
+    (v) => v.theme !== undefined || v.custom_bg !== undefined,
+    { message: "Nothing to update" },
+  );
 
 export async function GET() {
   const supabase = createSupabaseServer();

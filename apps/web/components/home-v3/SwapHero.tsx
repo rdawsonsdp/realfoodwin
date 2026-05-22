@@ -25,9 +25,10 @@ interface Props {
   greeting: string;
   quote: Quote;
   themeId: string;
+  hasCustomBg: boolean;
 }
 
-export function SwapHero({ greeting, quote, themeId }: Props) {
+export function SwapHero({ greeting, quote, themeId, hasCustomBg }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -325,19 +326,21 @@ export function SwapHero({ greeting, quote, themeId }: Props) {
           className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-paper text-ink rounded-t-soft md:rounded-soft shadow-warm animate-fade-up"
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            type="button"
-            onClick={closePopup}
-            aria-label="Close"
-            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-ink/5 hover:bg-ink/10 text-ink text-xl leading-none flex items-center justify-center"
-          >
-            ×
-          </button>
+          <div className="sticky top-0 z-20 flex items-center justify-end bg-paper/95 backdrop-blur-sm px-3 py-2 border-b border-ink/10">
+            <button
+              type="button"
+              onClick={closePopup}
+              aria-label="Close"
+              className="w-9 h-9 rounded-full bg-ink/5 hover:bg-ink/10 text-ink text-xl leading-none flex items-center justify-center"
+            >
+              ×
+            </button>
+          </div>
           <div className="p-4 md:p-6">
             {result ? (
               <>
                 <SwapResultActions result={result} />
-                <SwapResultCard result={result} isLoggedIn={true} />
+                <SwapResultCard result={result} isLoggedIn={true} hideSaveButton />
               </>
             ) : (
               <div className="py-10 text-center">
@@ -386,8 +389,8 @@ export function SwapHero({ greeting, quote, themeId }: Props) {
             />
             <details className="mt-6 border-t border-ink/10 pt-4 group">
               <summary className="flex items-center justify-between cursor-pointer list-none select-none">
-                <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] font-bold text-ink/70">
-                  <span aria-hidden>🎨</span> Background
+                <span className="inline-flex items-center gap-2 text-sm font-bold text-ink/80">
+                  <span aria-hidden>🎨</span> Customize Your background
                 </span>
                 <span
                   aria-hidden
@@ -399,11 +402,12 @@ export function SwapHero({ greeting, quote, themeId }: Props) {
               <div className="mt-3 rounded-soft bg-honey/30 ring-1 ring-honey/60 px-3 py-2 text-xs text-ink/80 flex items-start gap-2">
                 <span aria-hidden className="text-base leading-none">💡</span>
                 <p>
-                  Pick a color or pattern for your home screen. Changes save
-                  instantly and follow you to every device you sign in on.
+                  Pick a color, pattern, or upload your own photo for your
+                  home screen. Changes save instantly and follow you to every
+                  device you sign in on.
                 </p>
               </div>
-              <ThemePicker currentThemeId={themeId} />
+              <ThemePicker currentThemeId={themeId} hasCustomBg={hasCustomBg} />
             </details>
           </div>
         </div>

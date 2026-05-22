@@ -16,7 +16,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { getSwapCounts } from "@/lib/swap-counts";
 import { getMealSlot, slotGreeting } from "@/lib/meal-slot";
 import { getQuoteForToday } from "@/lib/quotes";
-import { getTheme } from "@/lib/home-themes";
+import { getTheme, buildCustomTheme, CUSTOM_THEME_ID } from "@/lib/home-themes";
 
 export const dynamic = "force-dynamic";
 
@@ -54,8 +54,14 @@ export default async function HomeV3() {
   const firstName = firstNameFrom(userRow.data?.display_name ?? null, user.email);
   const greeting = `${slotGreeting(slot)}, ${firstName}.`;
   const quote = getQuoteForToday(now);
-  const uiPrefs = (prefsRow.data?.ui_prefs ?? {}) as { theme?: string };
-  const theme = getTheme(uiPrefs.theme);
+  const uiPrefs = (prefsRow.data?.ui_prefs ?? {}) as {
+    theme?: string;
+    custom_bg?: string | null;
+  };
+  const theme =
+    uiPrefs.theme === CUSTOM_THEME_ID && uiPrefs.custom_bg
+      ? buildCustomTheme(uiPrefs.custom_bg)
+      : getTheme(uiPrefs.theme);
   const toneClass = theme.tone === "ink" ? "text-ink" : "text-paper";
 
   return (
@@ -63,7 +69,12 @@ export default async function HomeV3() {
       <Nav />
       <main className="max-w-2xl mx-auto px-4 md:px-6 py-8 md:py-14">
         <HomeViewToggle active="swap" />
-        <SwapHero greeting={greeting} quote={quote} themeId={theme.id} />
+        <SwapHero
+          greeting={greeting}
+          quote={quote}
+          themeId={theme.id}
+          hasCustomBg={!!uiPrefs.custom_bg}
+        />
         <SwapCounter counts={counts} />
       </main>
       <footer

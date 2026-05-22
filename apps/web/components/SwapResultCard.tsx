@@ -6,7 +6,6 @@ import { apiPost } from "@/lib/api";
 import { IterationRow } from "./IterationRow";
 import { RecipeActions } from "./RecipeActions";
 import { StarRating } from "./StarRating";
-import { FoodConfetti } from "./FoodConfetti";
 
 export interface SwapAlternate {
   title: string;
@@ -66,21 +65,20 @@ export function SwapResultCard({
   isLoggedIn,
   onTryAnotherVersion,
   retryingVersion,
+  hideSaveButton,
 }: {
   result: SwapResult;
   isLoggedIn: boolean;
   onTryAnotherVersion?: (feedback?: string) => void;
   retryingVersion?: boolean;
+  /** Hide the bottom "Save to My Kitchen" button — used where the parent
+   * surface already exposes a save action. */
+  hideSaveButton?: boolean;
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [celebrate, setCelebrate] = useState(false);
   const [currentOutput, setCurrentOutput] = useState(result.output);
-
-  useEffect(() => {
-    if (result.output) setCelebrate(true);
-  }, [result.query]);
 
   if (!currentOutput) {
     return <div className="card p-5 md:p-8">No result.</div>;
@@ -118,7 +116,6 @@ export function SwapResultCard({
         alternates: [wasPrimary, ...remaining],
       };
     });
-    setCelebrate(true);
   }
 
   async function onSave() {
@@ -132,8 +129,7 @@ export function SwapResultCard({
     try {
       await apiPost("/api/kitchen", { swap_id: result.swapId });
       setSaved(true);
-      setCelebrate(true);
-    } catch (err) {
+      } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
     } finally {
@@ -245,8 +241,7 @@ export function SwapResultCard({
           />
         )}
 
-        <FoodConfetti active={celebrate} onDone={() => setCelebrate(false)} />
-      </article>
+        </article>
     );
   }
 
@@ -497,17 +492,19 @@ export function SwapResultCard({
         </div>
       )}
 
-      <div className="p-5 md:p-6 bg-paper border-t border-ink/5">
-        {saved ? (
-          <button className="btn-secondary w-full" disabled>
-            ✓ Saved to My Kitchen
-          </button>
-        ) : (
-          <button onClick={onSave} disabled={saving} className="btn-primary w-full">
-            {saving ? "Saving…" : isLoggedIn ? "Save to My Kitchen" : "Save to My Kitchen — Sign up to keep this"}
-          </button>
-        )}
-      </div>
+      {!hideSaveButton && (
+        <div className="p-5 md:p-6 bg-paper border-t border-ink/5">
+          {saved ? (
+            <button className="btn-secondary w-full" disabled>
+              ✓ Saved to My Kitchen
+            </button>
+          ) : (
+            <button onClick={onSave} disabled={saving} className="btn-primary w-full">
+              {saving ? "Saving…" : isLoggedIn ? "Save to My Kitchen" : "Save to My Kitchen — Sign up to keep this"}
+            </button>
+          )}
+        </div>
+      )}
 
       {currentOutput.alternates && currentOutput.alternates.length > 0 && (
         <AlternatesRow
@@ -516,7 +513,6 @@ export function SwapResultCard({
         />
       )}
 
-      <FoodConfetti active={celebrate} onDone={() => setCelebrate(false)} />
     </article>
   );
 }

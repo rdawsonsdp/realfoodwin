@@ -83,7 +83,6 @@ export function KitchenCardActions({
     if (madeIt || busy) return;
     setBusy(true);
     setMadeIt(true);
-    setCelebrate(true);
     try {
       await apiPost("/api/events", {
         event_type: "made_it_loved",
