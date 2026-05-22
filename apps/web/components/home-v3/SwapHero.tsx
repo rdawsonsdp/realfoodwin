@@ -4,13 +4,19 @@
 //
 // A paper card with an editable composer in the center ("Swap …") and three
 // input-mode chips anchored in the lower right: voice, photo, scan. Submit
-// posts to /api/swap and navigates to /swap/[id] — same contract as the
-// shared SwapModal, just inline so the page itself is the composer.
+// posts to /api/swap and renders the result in a popup overlay so the user
+// never leaves the home page.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { VoiceButton } from "@/components/VoiceButton";
 import { BarcodeButton } from "@/components/BarcodeButton";
+import { SwapResultCard, type SwapResult } from "@/components/SwapResultCard";
+import {
+  SwapPreferences,
+  EMPTY_PREFS,
+  type SwapPrefsValue,
+} from "@/components/SwapPreferences";
 import { compressImage, type PickedImage } from "@/lib/image-compress";
 import type { Quote } from "@/lib/quotes";
 
@@ -24,7 +30,39 @@ export function SwapHero({ greeting, quote }: Props) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<SwapResult | null>(null);
+  const [noMatchMessage, setNoMatchMessage] = useState<string | null>(null);
+  const [prefsOpen, setPrefsOpen] = useState(false);
+  const [prefs, setPrefs] = useState<SwapPrefsValue>(EMPTY_PREFS);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
+
+  const popupOpen =
+    result !== null || noMatchMessage !== null || prefsOpen;
+
+  useEffect(() => {
+    if (!popupOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeAllPopups();
+    };
+    document.body.classList.add("overflow-hidden");
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.classList.remove("overflow-hidden");
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [popupOpen]);
+
+  function closePopup() {
+    setResult(null);
+    setNoMatchMessage(null);
+    setQuery("");
+    router.refresh();
+  }
+
+  function closeAllPopups() {
+    setPrefsOpen(false);
+    closePopup();
+  }
 
   async function submit(img: PickedImage | null, q: string) {
     if (!img && q.trim().length < 2) {
@@ -41,24 +79,60 @@ export function SwapHero({ greeting, quote }: Props) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           query: q.trim(),
+          preferences: prefs,
           ...(img ? { image: { media_type: img.mediaType, data: img.data } } : {}),
         }),
         signal: controller.signal,
         cache: "no-store",
       });
       const json = (await res.json().catch(() => null)) as {
-        data?: { swap?: { id: string } | null };
+        data?: {
+          swap?: { id: string } | null;
+          output?: SwapResult["output"] | null;
+          latency_ms?: number | null;
+          cached?: boolean;
+          no_match?: boolean;
+          message?: string;
+        };
         error?: { message?: string };
       } | null;
       if (!res.ok) {
         throw new Error(json?.error?.message ?? `Request failed (${res.status})`);
       }
-      const swapId = json?.data?.swap?.id;
-      if (swapId) {
-        router.push(`/swap/${swapId}`);
-      } else {
-        router.push(`/?q=${encodeURIComponent(q.trim())}`);
+      const data = json?.data;
+      if (data?.no_match) {
+        setNoMatchMessage(
+          data.message ??
+            `No curated swap yet for "${q.trim()}". Try a different product.`,
+        );
+        setLoading(false);
+        return;
       }
+      if (data?.output) {
+        setResult({
+          query: q.trim(),
+          output: data.output,
+          latencyMs: data.latency_ms ?? null,
+          cached: data.cached ?? false,
+          swapId: data.swap?.id ?? null,
+        });
+        // Increment the user's swap counts/streak. /api/swap already logs a
+        // `viewed_swap` event; this is the "ran a swap on /home-v3" signal
+        // that the SwapCounter query (MADE_EVENT_TYPES) picks up.
+        void fetch("/api/events", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            event_type: "home_v3_swap",
+            target_type: data.swap?.id ? "swap" : null,
+            target_id: data.swap?.id ?? undefined,
+            metadata: { query: q.trim() },
+          }),
+        }).catch(() => {});
+        setLoading(false);
+        return;
+      }
+      throw new Error("Got an empty response.");
     } catch (err) {
       const aborted =
         (err instanceof DOMException && err.name === "AbortError") ||
@@ -95,6 +169,7 @@ export function SwapHero({ greeting, quote }: Props) {
   }
 
   return (
+    <>
     <section className="text-center">
       <p className="text-paper/70 text-sm md:text-base font-medium mb-4">
         {greeting}
@@ -146,6 +221,20 @@ export function SwapHero({ greeting, quote }: Props) {
           {error && (
             <p className="mt-3 text-xs text-coral max-w-[28ch]">{error}</p>
           )}
+        </div>
+
+        {/* Lower-left: preferences gear. Hover label is the native title tooltip. */}
+        <div className="absolute bottom-3 left-3">
+          <button
+            type="button"
+            aria-label="Show Preferences"
+            title="Show Preferences"
+            onClick={() => setPrefsOpen(true)}
+            disabled={loading}
+            className="group w-11 h-11 rounded-full bg-ink/15 hover:bg-ink/25 active:scale-95 transition flex items-center justify-center text-xl ring-1 ring-ink/20 disabled:opacity-50"
+          >
+            <span aria-hidden>⚙️</span>
+          </button>
         </div>
 
         {/* Lower-right action chips: voice · photo · scan. */}
@@ -221,5 +310,212 @@ export function SwapHero({ greeting, quote }: Props) {
         One small upgrade. That&apos;s the whole game.
       </p>
     </section>
+
+    {(result !== null || noMatchMessage !== null) && (
+      <div
+        className="fixed inset-0 z-[90] bg-ink/70 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-6"
+        onClick={closePopup}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Swap result"
+      >
+        <div
+          className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-paper text-ink rounded-t-soft md:rounded-soft shadow-warm animate-fade-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={closePopup}
+            aria-label="Close"
+            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-ink/5 hover:bg-ink/10 text-ink text-xl leading-none flex items-center justify-center"
+          >
+            ×
+          </button>
+          <div className="p-4 md:p-6">
+            {result ? (
+              <>
+                <SwapResultActions result={result} />
+                <SwapResultCard result={result} isLoggedIn={true} />
+              </>
+            ) : (
+              <div className="py-10 text-center">
+                <p className="text-lg font-semibold mb-2">No swap yet</p>
+                <p className="text-sm text-ink/70 max-w-[36ch] mx-auto">
+                  {noMatchMessage}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {prefsOpen && (
+      <div
+        className="fixed inset-0 z-[95] bg-ink/70 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-6"
+        onClick={() => setPrefsOpen(false)}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Swap preferences"
+      >
+        <div
+          className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-paper text-ink rounded-t-soft md:rounded-soft shadow-warm animate-fade-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between px-5 py-3 border-b border-ink/10 sticky top-0 bg-paper z-10">
+            <p className="text-sm uppercase tracking-[0.16em] font-bold text-forest-700">
+              ⚙️ Preferences
+            </p>
+            <button
+              type="button"
+              onClick={() => setPrefsOpen(false)}
+              aria-label="Close"
+              className="w-9 h-9 rounded-full hover:bg-ink/5 text-ink text-xl leading-none flex items-center justify-center"
+            >
+              ×
+            </button>
+          </div>
+          <div className="p-4 md:p-6">
+            <SwapPreferences
+              value={prefs}
+              onChange={setPrefs}
+              disabled={loading}
+              defaultExpanded
+            />
+          </div>
+        </div>
+      </div>
+    )}
+    </>
+  );
+}
+
+// Icon row above the SwapResultCard inside the result popup. 🍳 saves the
+// swap into the user's Kitchen (recipe_box_entries); 🛒 pushes the swap's
+// ingredients into grocery_items. Both buttons flip to a checked state once
+// they succeed so the user can see the action landed.
+function SwapResultActions({ result }: { result: SwapResult }) {
+  const [savingKitchen, setSavingKitchen] = useState(false);
+  const [savedKitchen, setSavedKitchen] = useState(false);
+  const [savingGrocery, setSavingGrocery] = useState(false);
+  const [savedGrocery, setSavedGrocery] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const ingredients = result.output?.recipe?.ingredients ?? [];
+  const canKitchen = !!result.swapId;
+  const canGrocery = ingredients.length > 0;
+
+  async function saveKitchen() {
+    if (!result.swapId) return;
+    setSavingKitchen(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/kitchen", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ swap_id: result.swapId }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as
+          | { error?: { message?: string } }
+          | null;
+        throw new Error(json?.error?.message ?? `Save failed (${res.status})`);
+      }
+      setSavedKitchen(true);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingKitchen(false);
+    }
+  }
+
+  async function saveGrocery() {
+    if (ingredients.length === 0) return;
+    setSavingGrocery(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/grocery", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          swap_id: result.swapId,
+          items: ingredients.map((i) => ({
+            name: i.name,
+            quantity: i.quantity,
+            unit: i.unit ?? null,
+          })),
+        }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as
+          | { error?: { message?: string } }
+          | null;
+        throw new Error(json?.error?.message ?? `Save failed (${res.status})`);
+      }
+      setSavedGrocery(true);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingGrocery(false);
+    }
+  }
+
+  return (
+    <div className="mb-4 flex items-center justify-end gap-2">
+      <ActionIcon
+        label={savedKitchen ? "Added to Kitchen" : "Add to Kitchen"}
+        emoji="🍳"
+        busy={savingKitchen}
+        done={savedKitchen}
+        disabled={!canKitchen || savingKitchen || savedKitchen}
+        onClick={saveKitchen}
+      />
+      <ActionIcon
+        label={savedGrocery ? "Added to Grocery List" : "Add to Grocery List"}
+        emoji="🛒"
+        busy={savingGrocery}
+        done={savedGrocery}
+        disabled={!canGrocery || savingGrocery || savedGrocery}
+        onClick={saveGrocery}
+      />
+      {err && (
+        <span className="text-xs text-coral max-w-[20ch] truncate" title={err}>
+          {err}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function ActionIcon({
+  label,
+  emoji,
+  busy,
+  done,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  emoji: string;
+  busy: boolean;
+  done: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className={`w-11 h-11 rounded-full flex items-center justify-center text-xl ring-1 transition active:scale-95 disabled:cursor-not-allowed ${
+        done
+          ? "bg-sage-soft ring-forest-700/30 text-forest-700"
+          : "bg-ink/5 hover:bg-ink/10 ring-ink/15 text-ink disabled:opacity-50"
+      }`}
+    >
+      <span aria-hidden>{busy ? "…" : done ? "✓" : emoji}</span>
+    </button>
   );
 }

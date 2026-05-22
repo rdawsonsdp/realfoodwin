@@ -20,9 +20,14 @@ export interface SwapCounts {
   week: number;
   month: number;
   lifetime: number;
+  streak: number;
 }
 
-const MADE_EVENT_TYPES = ["home_v2_made_swap", "made_it"] as const;
+const MADE_EVENT_TYPES = [
+  "home_v2_made_swap",
+  "made_it",
+  "home_v3_swap",
+] as const;
 
 function toLocalDateKey(d: Date, tz: string): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -46,10 +51,13 @@ export async function getSwapCounts(
   const supabase = createSupabaseServer();
   const tz = DEFAULT_TIMEZONE;
 
-  // Pull 31 days of made-events to cover today/week/month locally. Lifetime
-  // is a separate head:count query so we don't have to fetch the full
-  // history just to display a number.
-  const thirtyOneDaysAgo = new Date(now.getTime() - 31 * 24 * 60 * 60 * 1000);
+  // Pull ~400 days of made-events. The 31-day window is enough for today/
+  // week/month, but the Swap Streak (consecutive active days) needs a much
+  // longer reach — we cap at 400 days so a year-plus streak fits and the
+  // payload stays small (each row is just a timestamp).
+  const fourHundredDaysAgo = new Date(
+    now.getTime() - 400 * 24 * 60 * 60 * 1000,
+  );
 
   const [recentRes, lifetimeRes] = await Promise.all([
     supabase
@@ -57,7 +65,7 @@ export async function getSwapCounts(
       .select("created_at")
       .eq("user_id", userId)
       .in("event_type", MADE_EVENT_TYPES as unknown as string[])
-      .gte("created_at", thirtyOneDaysAgo.toISOString()),
+      .gte("created_at", fourHundredDaysAgo.toISOString()),
     supabase
       .from("events")
       .select("id", { count: "exact", head: true })
@@ -73,12 +81,26 @@ export async function getSwapCounts(
   let today = 0;
   let week = 0;
   let month = 0;
+  const dayKeys = new Set<string>();
   for (const row of recent) {
     const created = new Date(row.created_at);
     const dayKey = toLocalDateKey(created, tz);
+    dayKeys.add(dayKey);
     if (dayKey === todayKey) today++;
     if (created >= weekStart) week++;
     if (dayKey.slice(0, 7) === monthKey) month++;
+  }
+
+  // Streak: consecutive local days ending today (inclusive). If today
+  // has no swap yet, the streak is 0 — same UX contract as Duolingo's
+  // "use it or lose it today" prompt.
+  let streak = 0;
+  if (dayKeys.has(todayKey)) {
+    let cursor = new Date(now);
+    while (dayKeys.has(toLocalDateKey(cursor, tz))) {
+      streak++;
+      cursor = new Date(cursor.getTime() - 24 * 60 * 60 * 1000);
+    }
   }
 
   return {
@@ -86,5 +108,6 @@ export async function getSwapCounts(
     week,
     month,
     lifetime: lifetimeRes.count ?? 0,
+    streak,
   };
 }

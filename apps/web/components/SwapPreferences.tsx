@@ -40,10 +40,16 @@ interface Props {
   value: SwapPrefsValue;
   onChange: (v: SwapPrefsValue) => void;
   disabled?: boolean;
+  defaultExpanded?: boolean;
 }
 
-export function SwapPreferences({ value, onChange, disabled }: Props) {
-  const [expanded, setExpanded] = useState(false);
+export function SwapPreferences({
+  value,
+  onChange,
+  disabled,
+  defaultExpanded = false,
+}: Props) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [mustInput, setMustInput] = useState("");
 
   function toggleArr<T>(arr: T[], item: T): T[] {

@@ -60,7 +60,7 @@ export function SwapCounter({ counts }: Props) {
         : `of ${DAILY_TARGET}`;
 
   return (
-    <section className="mt-8 md:mt-10">
+    <section className="mt-8 md:mt-10 space-y-4">
       <div className="flex items-stretch justify-around gap-1 md:gap-4 rounded-2xl bg-paper/8 ring-1 ring-paper/15 py-4 md:py-5 px-2 md:px-4">
         <Stat label="Today" value={counts.today} goal={todayGoal} highlight />
         <div className="self-center w-px h-10 bg-paper/15" aria-hidden />
@@ -69,6 +69,15 @@ export function SwapCounter({ counts }: Props) {
         <Stat label="Month" value={counts.month} goal={`of ${MONTHLY_TARGET}`} />
         <div className="self-center w-px h-10 bg-paper/15" aria-hidden />
         <Stat label="Lifetime" value={counts.lifetime} />
+      </div>
+      <div className="flex items-center justify-center gap-2 rounded-2xl bg-coral/15 ring-1 ring-coral/40 py-3 px-4">
+        <span aria-hidden className="text-2xl leading-none">🔥</span>
+        <span className="tabular-nums font-black text-2xl md:text-3xl text-paper">
+          {counts.streak}
+        </span>
+        <span className="text-[11px] md:text-xs font-semibold uppercase tracking-[0.14em] text-paper/80">
+          {counts.streak === 1 ? "day swap streak" : "day swap streak"}
+        </span>
       </div>
     </section>
   );
