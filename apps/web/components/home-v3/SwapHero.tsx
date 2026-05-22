@@ -484,61 +484,77 @@ function SwapResultActions({ result }: { result: SwapResult }) {
   }
 
   return (
-    <div className="mb-4 flex items-center justify-end gap-2">
-      <ActionIcon
-        label={savedKitchen ? "Added to Kitchen" : "Add to Kitchen"}
-        emoji="🍳"
-        busy={savingKitchen}
-        done={savedKitchen}
-        disabled={!canKitchen || savingKitchen || savedKitchen}
-        onClick={saveKitchen}
-      />
-      <ActionIcon
-        label={savedGrocery ? "Added to Grocery List" : "Add to Grocery List"}
-        emoji="🛒"
-        busy={savingGrocery}
-        done={savedGrocery}
-        disabled={!canGrocery || savingGrocery || savedGrocery}
-        onClick={saveGrocery}
-      />
+    <div className="mb-5">
+      <div className="grid grid-cols-2 gap-3">
+        <ActionPill
+          label="Add to Kitchen"
+          doneLabel="In My Kitchen"
+          emoji="🍳"
+          busy={savingKitchen}
+          done={savedKitchen}
+          disabled={!canKitchen || savingKitchen || savedKitchen}
+          onClick={saveKitchen}
+          variant="forest"
+        />
+        <ActionPill
+          label="Add to Grocery List"
+          doneLabel="On Grocery List"
+          emoji="🛒"
+          busy={savingGrocery}
+          done={savedGrocery}
+          disabled={!canGrocery || savingGrocery || savedGrocery}
+          onClick={saveGrocery}
+          variant="coral"
+        />
+      </div>
       {err && (
-        <span className="text-xs text-coral max-w-[20ch] truncate" title={err}>
+        <p className="mt-2 text-xs text-coral" title={err}>
           {err}
-        </span>
+        </p>
       )}
     </div>
   );
 }
 
-function ActionIcon({
+function ActionPill({
   label,
+  doneLabel,
   emoji,
   busy,
   done,
   disabled,
   onClick,
+  variant,
 }: {
   label: string;
+  doneLabel: string;
   emoji: string;
   busy: boolean;
   done: boolean;
   disabled: boolean;
   onClick: () => void;
+  variant: "forest" | "coral";
 }) {
+  const palette =
+    variant === "forest"
+      ? "bg-forest-700 text-white hover:brightness-110 shadow-warm"
+      : "bg-coral text-white hover:brightness-110 shadow-warm";
+  const donePalette = "bg-sage-soft text-forest-700 ring-2 ring-forest-700/30";
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-label={label}
-      title={label}
-      className={`w-11 h-11 rounded-full flex items-center justify-center text-xl ring-1 transition active:scale-95 disabled:cursor-not-allowed ${
-        done
-          ? "bg-sage-soft ring-forest-700/30 text-forest-700"
-          : "bg-ink/5 hover:bg-ink/10 ring-ink/15 text-ink disabled:opacity-50"
+      aria-label={done ? doneLabel : label}
+      title={done ? doneLabel : label}
+      className={`w-full inline-flex items-center justify-center gap-2 rounded-soft px-4 py-3 md:py-3.5 text-sm md:text-base font-bold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-90 ${
+        done ? donePalette : palette
       }`}
     >
-      <span aria-hidden>{busy ? "…" : done ? "✓" : emoji}</span>
+      <span aria-hidden className="text-xl md:text-2xl leading-none">
+        {busy ? "…" : done ? "✓" : emoji}
+      </span>
+      <span className="leading-none">{busy ? "Saving…" : done ? doneLabel : label}</span>
     </button>
   );
 }
