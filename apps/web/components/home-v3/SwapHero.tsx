@@ -378,15 +378,33 @@ export function SwapHero({ greeting, quote, themeId }: Props) {
             </button>
           </div>
           <div className="p-4 md:p-6">
-            <ThemePicker currentThemeId={themeId} />
-            <div className="mt-6 border-t border-ink/10 pt-4">
-              <SwapPreferences
-                value={prefs}
-                onChange={setPrefs}
-                disabled={loading}
-                defaultExpanded
-              />
-            </div>
+            <SwapPreferences
+              value={prefs}
+              onChange={setPrefs}
+              disabled={loading}
+              defaultExpanded
+            />
+            <details className="mt-6 border-t border-ink/10 pt-4 group">
+              <summary className="flex items-center justify-between cursor-pointer list-none select-none">
+                <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.16em] font-bold text-ink/70">
+                  <span aria-hidden>🎨</span> Background
+                </span>
+                <span
+                  aria-hidden
+                  className="text-ink/50 text-sm transition-transform group-open:rotate-180"
+                >
+                  ▾
+                </span>
+              </summary>
+              <div className="mt-3 rounded-soft bg-honey/30 ring-1 ring-honey/60 px-3 py-2 text-xs text-ink/80 flex items-start gap-2">
+                <span aria-hidden className="text-base leading-none">💡</span>
+                <p>
+                  Pick a color or pattern for your home screen. Changes save
+                  instantly and follow you to every device you sign in on.
+                </p>
+              </div>
+              <ThemePicker currentThemeId={themeId} />
+            </details>
           </div>
         </div>
       </div>

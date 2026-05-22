@@ -40,13 +40,12 @@ export function ThemePicker({ currentThemeId }: Props) {
   }
 
   return (
-    <div className="mt-4">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs uppercase tracking-[0.16em] font-bold text-ink/70">
-          Background
+    <div className="mt-3">
+      {err && (
+        <p className="text-xs text-coral mb-2 truncate" title={err}>
+          {err}
         </p>
-        {err && <span className="text-xs text-coral truncate max-w-[18ch]">{err}</span>}
-      </div>
+      )}
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {HOME_THEMES.map((t) => {
           const isActive = t.id === selected;
