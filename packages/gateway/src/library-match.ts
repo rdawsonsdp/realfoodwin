@@ -239,11 +239,21 @@ export async function matchLibrary(
   const topK = input.topK ?? 10;
 
   // 1. Cache lookup.
+  // Only use a cached row when it actually searched every goal the current
+  // request needs. A row written with goals=["recipe"] never searched the
+  // product table, so its empty product_ids is "we didn't look," NOT
+  // "we looked and found none" — reusing it would silently skip products on
+  // later requests that want them. goals=[] in the cache row means we
+  // searched both, so it's compatible with anything.
   const cached = await readCache(queryLc);
   if (cached) {
+    const cachedGoals = (cached.goals ?? []) as SwapGoal[];
+    const cacheSearchedBoth = cachedGoals.length === 0;
+    const cacheSearchedRecipe = cacheSearchedBoth || cachedGoals.includes("recipe");
+    const cacheSearchedProduct = cacheSearchedBoth || cachedGoals.includes("product");
     const matchesGoals =
-      (wantRecipe || !cached.recipe_id) &&
-      (wantProduct || cached.product_ids.length === 0);
+      (!wantRecipe || cacheSearchedRecipe) &&
+      (!wantProduct || cacheSearchedProduct);
     if (matchesGoals) {
       const [recipe, products] = await Promise.all([
         cached.recipe_id && wantRecipe ? fetchRecipeById(cached.recipe_id) : Promise.resolve(null),
