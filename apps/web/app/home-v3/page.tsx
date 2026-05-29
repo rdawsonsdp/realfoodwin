@@ -9,7 +9,6 @@
 
 import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
-import { HomeViewToggle } from "@/components/HomeViewToggle";
 import { SwapHero } from "@/components/home-v3/SwapHero";
 import { SwapCounter } from "@/components/home-v3/SwapCounter";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -52,7 +51,6 @@ export default async function HomeV3() {
     <div className={`min-h-screen ${toneClass}`} style={{ background: theme.background }}>
       <Nav />
       <main className="max-w-2xl mx-auto px-4 md:px-6 py-8 md:py-14">
-        <HomeViewToggle active="swap" />
         <SwapHero
           quote={quote}
           themeId={theme.id}

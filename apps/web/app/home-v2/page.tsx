@@ -10,7 +10,6 @@ import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { SwapHero } from "@/components/SwapHero";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { HomeViewToggle } from "@/components/HomeViewToggle";
 import { HeroStrip } from "@/components/home-v2/HeroStrip";
 import { CoachCard } from "@/components/home-v2/CoachCard";
 import { NextUpCard } from "@/components/home-v2/NextUpCard";
@@ -137,7 +136,6 @@ export default async function HomeV2() {
     <>
       <Nav />
       <main className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-10">
-        <HomeViewToggle active="coach" />
         <HeroStrip firstName={firstName} slot={slot} now={now} />
 
         {/* Free-form swap entry — the app's primary action for anything not
