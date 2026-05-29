@@ -70,7 +70,7 @@ function buildSwapOutputFromLibrary(
     const steps = Array.isArray(recipe.steps)
       ? (recipe.steps as unknown[]).map((s) => String(s))
       : [];
-    const productAlternates = products.slice(0, 3).map((p) => ({
+    const productAlternates = products.slice(0, 7).map((p) => ({
       title: `${p.brand_name}: ${p.name}`,
       narrative: p.description ?? "",
       ...(p.product_url ? { product_url: p.product_url } : {}),
@@ -108,7 +108,7 @@ function buildSwapOutputFromLibrary(
     ...(primary.product_url ? { product_url: primary.product_url } : {}),
     brand_name: primary.brand_name,
     ...(primary.image_url ? { product_image_url: primary.image_url } : {}),
-    alternates: rest.slice(0, 3).map((p) => ({
+    alternates: rest.slice(0, 7).map((p) => ({
       title: `${p.brand_name}: ${p.name}`,
       narrative: p.description ?? "",
       ...(p.product_url ? { product_url: p.product_url } : {}),

@@ -74,9 +74,9 @@ const JUDGE_TOOL: ToolDefinition = {
       product_ids: {
         type: "array",
         items: { type: "string" },
-        maxItems: 4,
+        maxItems: 8,
         description:
-          "IDs of brand_products that fit the query (best fit first). Empty array if none fit. Only populate when 'product' is in goals.",
+          "IDs of brand_products that fit the query, best fit first. Include EVERY candidate that is a genuine match — the UI shows them as 'Other ideas' so the user can browse all real-food alternatives, not just one. Empty array if none fit. Only populate when 'product' is in goals.",
       },
       reason: {
         type: "string",
@@ -106,8 +106,11 @@ Hard rules:
   query (bar → bars, chip → chips, drink → drinks, broth → broths).
 - For recipes: prefer items that match the *flavor profile* or *category*
   (sweet treat → dessert; salty crunch → snack; dinner → dinner).
-- Up to 3 products is fine when several genuinely match (e.g., the user said
-  "real-food popcorn" and three popcorn options are listed).
+- Include EVERY product candidate that is a genuine match for the user's
+  query — the UI shows them as "Other ideas" so the user can browse all
+  curated real-food alternatives, not just one. If five different snickers-
+  style bars all fit, return all five (best fit first). Don't withhold a
+  genuine fit just to keep the list short.
 - Return exactly one recipe ID or null (never multiple recipes).
 
 Output ONLY via the pick_library_match tool.`;
@@ -236,7 +239,9 @@ export async function matchLibrary(
   }
   const wantRecipe = input.goals.length === 0 || input.goals.includes("recipe");
   const wantProduct = input.goals.length === 0 || input.goals.includes("product");
-  const topK = input.topK ?? 10;
+  // Bumped from 10 → 15 so Haiku sees enough product candidates to populate a
+  // multi-item "Other ideas" list (cap is 8 per JUDGE_TOOL, plus recipes).
+  const topK = input.topK ?? 15;
 
   // 1. Cache lookup.
   // Only use a cached row when it actually searched every goal the current
@@ -332,7 +337,7 @@ export async function matchLibrary(
       ? judgement.recipe_id
       : null;
   const pickedProductIds = wantProduct
-    ? (judgement.product_ids ?? []).filter((id) => productIds.has(id)).slice(0, 4)
+    ? (judgement.product_ids ?? []).filter((id) => productIds.has(id)).slice(0, 8)
     : [];
 
   // 5. Fetch full bodies.
