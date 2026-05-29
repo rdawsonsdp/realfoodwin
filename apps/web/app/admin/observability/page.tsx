@@ -314,57 +314,14 @@ function TraceRowCard({ row }: { row: TraceRow }) {
           {row.web_searches.map((q) => `"${q}"`).join(", ")}
         </p>
       )}
-      <details className="text-xs">
-        <summary className="cursor-pointer text-paper/50 hover:text-paper/80">
-          Technical details
-        </summary>
-        <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5 text-paper/70">
-          <dt>Routing tag</dt>
-          <dd className="font-mono">{row.classification_reasoning}</dd>
-          {row.category_implicit && (
-            <>
-              <dt>Category</dt>
-              <dd>{row.category_implicit}</dd>
-            </>
-          )}
-          {row.tokens_input != null && (
-            <>
-              <dt>Tokens in / out</dt>
-              <dd>
-                {row.tokens_input} / {row.tokens_output ?? 0}
-              </dd>
-            </>
-          )}
-          {row.cost_usd != null && (
-            <>
-              <dt>Cost</dt>
-              <dd>${row.cost_usd.toFixed(5)}</dd>
-            </>
-          )}
-          {row.web_urls_fetched.length > 0 && (
-            <>
-              <dt>URLs read</dt>
-              <dd className="break-all">
-                {row.web_urls_fetched.map((u, i) => (
-                  <span key={u} className="block">
-                    <Link
-                      href={u}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-paper"
-                    >
-                      {u}
-                    </Link>
-                    {i < row.web_urls_fetched.length - 1 ? "" : ""}
-                  </span>
-                ))}
-              </dd>
-            </>
-          )}
-          <dt>Request id</dt>
-          <dd className="font-mono break-all">{row.request_id}</dd>
-        </dl>
-      </details>
+      <div className="pt-1">
+        <Link
+          href={`/admin/observability/${row.request_id}`}
+          className="inline-flex items-center text-xs font-semibold text-paper/70 hover:text-paper"
+        >
+          View full trace details →
+        </Link>
+      </div>
     </article>
   );
 }

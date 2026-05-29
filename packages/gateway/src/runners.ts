@@ -281,6 +281,15 @@ export interface SwapTrace {
   web_urls_fetched: string[];
   library_written: boolean;
   library_written_product_id: string | null;
+  // Fields persisted so the Observability admin tab can rebuild the same
+  // panel the user-facing /home-v3 debug panel shows, from DB only.
+  merged_preferences: SwapPreferencesInput | null;
+  avoid_titles: string[] | null;
+  feedback: string | null;
+  user_context: SwapDebug["user_context"];
+  user_prompt: string | null;
+  model: string | null;
+  prompt_version: string | null;
 }
 
 // Convert a curated library match into a SwapGenerator.OutputSchema-shaped
@@ -464,6 +473,13 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
         web_urls_fetched: [],
         library_written: false,
         library_written_product_id: null,
+        merged_preferences: input.preferences ?? null,
+        avoid_titles: input.avoidTitles ?? null,
+        feedback: input.feedback ?? null,
+        user_context: null,
+        user_prompt: null,
+        model: null,
+        prompt_version: null,
       };
       return { cached: true, swap: hit, debug, trace };
     }
@@ -539,6 +555,13 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
           web_urls_fetched: [],
           library_written: false,
           library_written_product_id: null,
+          merged_preferences: input.preferences ?? null,
+          avoid_titles: input.avoidTitles ?? null,
+          feedback: input.feedback ?? null,
+          user_context: null,
+          user_prompt: null,
+          model: null,
+          prompt_version: null,
         };
         return {
           cached: false,
@@ -740,6 +763,13 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
       web_urls_fetched: webUrlsFetched,
       library_written: libraryWritten,
       library_written_product_id: libraryWrittenProductId,
+      merged_preferences: input.preferences ?? null,
+      avoid_titles: input.avoidTitles ?? null,
+      feedback: input.feedback ?? null,
+      user_context: digestUserContext(ctx),
+      user_prompt: userPrompt,
+      model: model || null,
+      prompt_version: SwapGenerator.PROMPT_VERSION,
     };
     return { cached: false, swap: saved, output: parsed.data, latencyMs: llmMs, debug, trace };
   } finally {
