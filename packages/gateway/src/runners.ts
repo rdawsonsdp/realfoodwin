@@ -134,11 +134,72 @@ function formatPreferences(p: SwapPreferencesInput | null | undefined): string {
   return `\n\nUser preferences for this swap (treat as hard constraints):\n- ${lines.join("\n- ")}`;
 }
 
+// Debug payload surfaced from the swap pipeline so the UI can show why/how the
+// agent picked this swap. Temporary observability — remove once we're confident.
+export interface SwapDebug {
+  source: "library" | "llm" | "cache";
+  model: string | null;
+  prompt_version: string | null;
+  request: string;
+  merged_preferences: SwapPreferencesInput | null;
+  avoid_titles: string[] | null;
+  feedback: string | null;
+  user_context: {
+    has_profile: boolean;
+    has_household: boolean;
+    household_member_count: number;
+    summary: string | null;
+    recent_wins: string[];
+    recent_misses: string[];
+    top_rated: string[];
+    low_rated: string[];
+    expert_reviewer_notes: string[];
+    admin_coaching_notes: string[];
+    cuisine_affinity: string[];
+    occasion_patterns: string[];
+    dismissal_reasons: string[];
+    system_rules: string[];
+  } | null;
+  user_prompt: string | null;
+}
+
+function digestUserContext(ctx: Awaited<ReturnType<typeof loadUserContext>>): SwapDebug["user_context"] {
+  return {
+    has_profile: ctx.profile !== null,
+    has_household: ctx.household !== null,
+    household_member_count: ctx.householdMembers.length,
+    summary: ctx.summary,
+    recent_wins: ctx.recentWins,
+    recent_misses: ctx.recentMisses,
+    top_rated: ctx.topRated,
+    low_rated: ctx.lowRated,
+    expert_reviewer_notes: ctx.expertReviewerNotes,
+    admin_coaching_notes: ctx.adminCoachingNotes,
+    cuisine_affinity: ctx.cuisineAffinity,
+    occasion_patterns: ctx.occasionPatterns,
+    dismissal_reasons: ctx.dismissalReasons,
+    system_rules: ctx.systemRules,
+  };
+}
+
 export async function runSwapGenerator(input: SwapGeneratorRunInput) {
   // Cache hit?
   if (input.userId && input.productId && !input.skipCache) {
     const hit = await getCachedSwap(input.userId, input.productId);
-    if (hit) return { cached: true, swap: hit };
+    if (hit) {
+      const debug: SwapDebug = {
+        source: "cache",
+        model: null,
+        prompt_version: null,
+        request: input.request,
+        merged_preferences: input.preferences ?? null,
+        avoid_titles: input.avoidTitles ?? null,
+        feedback: input.feedback ?? null,
+        user_context: null,
+        user_prompt: null,
+      };
+      return { cached: true, swap: hit, debug };
+    }
   }
 
   // Library-first matcher. Photo swaps need vision so they always hit Sonnet,
@@ -166,6 +227,17 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
             swap_target: input.request,
           });
         }
+        const debug: SwapDebug = {
+          source: "library",
+          model: null,
+          prompt_version: null,
+          request: input.request,
+          merged_preferences: input.preferences ?? null,
+          avoid_titles: input.avoidTitles ?? null,
+          feedback: input.feedback ?? null,
+          user_context: null,
+          user_prompt: null,
+        };
         return {
           cached: false,
           swap: saved,
@@ -177,6 +249,7 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
             productIds: match.products.map((p) => p.id),
             fromCache: match.cached,
           },
+          debug,
         };
       }
       // Only surface the explicit "no products found" message when the
@@ -252,7 +325,18 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
       });
     }
 
-    return { cached: false, swap: saved, output: parsed.data, latencyMs: Date.now() - start };
+    const debug: SwapDebug = {
+      source: "llm",
+      model: model || null,
+      prompt_version: SwapGenerator.PROMPT_VERSION,
+      request: input.request,
+      merged_preferences: input.preferences ?? null,
+      avoid_titles: input.avoidTitles ?? null,
+      feedback: input.feedback ?? null,
+      user_context: digestUserContext(ctx),
+      user_prompt: userPrompt,
+    };
+    return { cached: false, swap: saved, output: parsed.data, latencyMs: Date.now() - start, debug };
   } finally {
     await logAgentCall({
       user_id: input.userId,

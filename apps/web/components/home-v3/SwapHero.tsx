@@ -18,6 +18,10 @@ import {
   type SwapPrefsValue,
 } from "@/components/SwapPreferences";
 import { ThemePicker } from "@/components/home-v3/ThemePicker";
+import {
+  AgentDebugPanel,
+  type AgentDebug,
+} from "@/components/home-v3/AgentDebugPanel";
 import { compressImage, type PickedImage } from "@/lib/image-compress";
 import type { Quote } from "@/lib/quotes";
 
@@ -34,6 +38,10 @@ export function SwapHero({ greeting, quote, themeId, hasCustomBg }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SwapResult | null>(null);
+  // Stays populated after the popup closes so the debug panel below the card
+  // keeps showing the most recent agent decision.
+  const [lastResult, setLastResult] = useState<SwapResult | null>(null);
+  const [lastDebug, setLastDebug] = useState<AgentDebug | null>(null);
   const [noMatchMessage, setNoMatchMessage] = useState<string | null>(null);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefs, setPrefs] = useState<SwapPrefsValue>(EMPTY_PREFS);
@@ -96,6 +104,7 @@ export function SwapHero({ greeting, quote, themeId, hasCustomBg }: Props) {
           cached?: boolean;
           no_match?: boolean;
           message?: string;
+          debug?: AgentDebug | null;
         };
         error?: { message?: string };
       } | null;
@@ -112,13 +121,16 @@ export function SwapHero({ greeting, quote, themeId, hasCustomBg }: Props) {
         return;
       }
       if (data?.output) {
-        setResult({
+        const next: SwapResult = {
           query: q.trim(),
           output: data.output,
           latencyMs: data.latency_ms ?? null,
           cached: data.cached ?? false,
           swapId: data.swap?.id ?? null,
-        });
+        };
+        setResult(next);
+        setLastResult(next);
+        setLastDebug(data.debug ?? null);
         // Increment the user's swap counts/streak. /api/swap already logs a
         // `viewed_swap` event; this is the "ran a swap on /home-v3" signal
         // that the SwapCounter query (MADE_EVENT_TYPES) picks up.
@@ -312,6 +324,12 @@ export function SwapHero({ greeting, quote, themeId, hasCustomBg }: Props) {
       <p className="mt-4 text-sm md:text-base text-paper/70 max-w-[28ch] mx-auto">
         One small upgrade. That&apos;s the whole game.
       </p>
+
+      <AgentDebugPanel
+        result={lastResult}
+        debug={lastDebug}
+        loading={loading && !lastResult}
+      />
     </section>
 
     {(result !== null || noMatchMessage !== null) && (

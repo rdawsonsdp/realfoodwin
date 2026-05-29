@@ -128,6 +128,7 @@ export async function POST(req: Request) {
         latency_ms: "latencyMs" in result ? result.latencyMs : null,
         source: "source" in result ? result.source : "llm",
         library_hit: "libraryHit" in result ? result.libraryHit : null,
+        debug: "debug" in result ? result.debug : null,
       },
     });
   } catch (err) {
