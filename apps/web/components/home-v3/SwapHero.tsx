@@ -22,6 +22,7 @@ import {
   AgentDebugPanel,
   type AgentDebug,
 } from "@/components/home-v3/AgentDebugPanel";
+import { SwapLoader } from "@/components/home-v3/SwapLoader";
 import { compressImage, type PickedImage } from "@/lib/image-compress";
 import type { Quote } from "@/lib/quotes";
 
@@ -194,6 +195,7 @@ export function SwapHero({ greeting, quote, themeId, hasCustomBg }: Props) {
                    rounded-[2rem] bg-paper text-ink shadow-card
                    ring-1 ring-paper/30 overflow-hidden"
       >
+        <SwapLoader show={loading} />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
           <div className="mb-8 max-w-[26ch]">
             <p className="text-balance text-[20px] md:text-[26px] leading-tight font-extrabold tracking-[-0.02em] text-ink">
@@ -238,17 +240,19 @@ export function SwapHero({ greeting, quote, themeId, hasCustomBg }: Props) {
           )}
         </div>
 
-        {/* Lower-left: preferences gear. Hover label is the native title tooltip. */}
+        {/* Lower-left: preferences as a labeled pill so the affordance is
+            obvious — users were missing the bare gear. */}
         <div className="absolute bottom-3 left-3">
           <button
             type="button"
-            aria-label="Show Preferences"
-            title="Show Preferences"
+            aria-label="Customize Swap"
+            title="Customize Swap"
             onClick={() => setPrefsOpen(true)}
             disabled={loading}
-            className="group w-11 h-11 rounded-full bg-ink/15 hover:bg-ink/25 active:scale-95 transition flex items-center justify-center text-xl ring-1 ring-ink/20 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-pill bg-ink/15 hover:bg-ink/25 active:scale-95 transition text-sm font-semibold text-ink ring-1 ring-ink/20 disabled:opacity-50"
           >
-            <span aria-hidden>⚙️</span>
+            <span aria-hidden className="text-lg leading-none">⚙️</span>
+            <span className="leading-none">Customize Swap</span>
           </button>
         </div>
 
@@ -408,7 +412,7 @@ export function SwapHero({ greeting, quote, themeId, hasCustomBg }: Props) {
             <details className="mt-6 border-t border-ink/10 pt-4 group">
               <summary className="flex items-center justify-between cursor-pointer list-none select-none">
                 <span className="inline-flex items-center gap-2 text-sm font-bold text-ink/80">
-                  <span aria-hidden>🎨</span> Customize Your background
+                  <span aria-hidden>🎨</span> Customize View
                 </span>
                 <span
                   aria-hidden
