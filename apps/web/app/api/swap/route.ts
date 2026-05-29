@@ -66,6 +66,11 @@ async function writeTrace(
       input_image_present: ctx.inputImagePresent,
       input_meta: ctx.inputMeta,
       category_implicit: trace.category_implicit,
+      web_searches: trace.web_searches,
+      web_urls_fetched: trace.web_urls_fetched,
+      latency_web_ms: trace.latency_web_ms,
+      library_written: trace.library_written,
+      library_written_product_id: trace.library_written_product_id,
       classification_reasoning: trace.classification_reasoning,
       classification_confidence: trace.classification_confidence,
       source_chosen: trace.source_chosen,
@@ -209,6 +214,19 @@ export async function POST(req: Request) {
       });
     }
 
+    // Attach the user-side input context to the trace payload so the client
+    // panel can lead with "You selected …" — the trace from the gateway
+    // doesn't know these by itself.
+    const clientTrace =
+      "trace" in result && result.trace
+        ? {
+            ...result.trace,
+            input_type: inputType,
+            input_query: query || null,
+            input_image_present: hasImage,
+          }
+        : null;
+
     return NextResponse.json({
       ok: true,
       data: {
@@ -220,7 +238,7 @@ export async function POST(req: Request) {
         source: "source" in result ? result.source : "llm",
         library_hit: "libraryHit" in result ? result.libraryHit : null,
         debug: "debug" in result ? result.debug : null,
-        trace: "trace" in result ? result.trace : null,
+        trace: clientTrace,
       },
     });
   } catch (err) {
@@ -247,10 +265,15 @@ export async function POST(req: Request) {
           latency_pgvector_ms: null,
           latency_judge_ms: null,
           latency_llm_ms: null,
+          latency_web_ms: null,
           latency_total_ms: 0,
           tokens_input: null,
           tokens_output: null,
           cost_usd: null,
+          web_searches: [],
+          web_urls_fetched: [],
+          library_written: false,
+          library_written_product_id: null,
         },
         {
           userId: user?.id ?? null,

@@ -12,7 +12,7 @@ export interface AgentTrace {
   request_id: string | null;
   classification_reasoning: string;
   classification_confidence: number | null;
-  source_chosen: "cache" | "library" | "llm" | "not_found";
+  source_chosen: "cache" | "library" | "llm" | "web" | "not_found";
   source_reasoning: string | null;
   db_match_found: boolean;
   library_recipe_id: string | null;
@@ -24,10 +24,168 @@ export interface AgentTrace {
   latency_pgvector_ms: number | null;
   latency_judge_ms: number | null;
   latency_llm_ms: number | null;
+  latency_web_ms: number | null;
   latency_total_ms: number;
   tokens_input: number | null;
   tokens_output: number | null;
   cost_usd: number | null;
+  web_searches: string[];
+  web_urls_fetched: string[];
+  library_written: boolean;
+  library_written_product_id: string | null;
+  // What the user actually sent in this turn — included so the panel can
+  // open with "what you selected" instead of starting at routing jargon.
+  input_type: "text" | "image" | "barcode" | "voice";
+  input_query: string | null;
+  input_image_present: boolean;
+}
+
+// Returns the search-method label + the literal thing the user sent.
+function inputDescription(trace: AgentTrace): { method: string; what: string } {
+  const q = trace.input_query?.trim() ?? "";
+  switch (trace.input_type) {
+    case "image":
+      return {
+        method: "Photo",
+        what: q ? `(with note: “${q}”)` : "a product photo",
+      };
+    case "barcode":
+      return { method: "Barcode scan", what: q ? `→ “${q}”` : "(unresolved)" };
+    case "voice":
+      return { method: "Voice", what: q ? `“${q}”` : "(no transcript)" };
+    default:
+      return { method: "Typed", what: q ? `“${q}”` : "(empty)" };
+  }
+}
+
+// Pulls the preferences the user had set when this swap fired. Returns an
+// array of plain-English chips — empty if nothing was set.
+function preferenceLines(debug: AgentDebug | null): string[] {
+  const prefs = debug?.merged_preferences as
+    | {
+        goals?: string[];
+        allergens?: string[];
+        dietary_styles?: string[];
+        max_prep_minutes?: number | null;
+        prioritize?: string[];
+        must_include?: string[];
+      }
+    | null
+    | undefined;
+  if (!prefs) return [];
+  const out: string[] = [];
+  const goals = prefs.goals ?? [];
+  if (goals.length === 1) {
+    out.push(goals[0] === "recipe" ? "Wants: a recipe" : "Wants: a product to buy");
+  } else if (goals.length >= 2) {
+    out.push("Wants: recipe or product");
+  }
+  if (prefs.dietary_styles?.length) out.push(`Diet: ${prefs.dietary_styles.join(", ")}`);
+  if (prefs.allergens?.length) out.push(`Avoiding: ${prefs.allergens.join(", ")}`);
+  if (prefs.max_prep_minutes) out.push(`Max prep: ${prefs.max_prep_minutes} min`);
+  if (prefs.must_include?.length)
+    out.push(`Must include: ${prefs.must_include.join(", ")}`);
+  if (prefs.prioritize?.length)
+    out.push(`Prioritizing: ${prefs.prioritize.join(", ")}`);
+  return out;
+}
+
+// Legacy single-line summary (kept for fallback / accessibility).
+function summarizeUserSelection(
+  trace: AgentTrace,
+  debug: AgentDebug | null,
+): string {
+  const prefs = debug?.merged_preferences as
+    | {
+        goals?: string[];
+        allergens?: string[];
+        dietary_styles?: string[];
+        max_prep_minutes?: number | null;
+        prioritize?: string[];
+        must_include?: string[];
+      }
+    | null
+    | undefined;
+  const q = trace.input_query?.trim();
+
+  let action: string;
+  switch (trace.input_type) {
+    case "image":
+      action = q
+        ? `You took a photo and added the note “${q}”`
+        : "You uploaded a photo of a product";
+      break;
+    case "barcode":
+      action = q
+        ? `You scanned a barcode that resolved to “${q}”`
+        : "You scanned a barcode";
+      break;
+    case "voice":
+      action = q ? `You spoke “${q}”` : "You used voice input";
+      break;
+    default:
+      action = q ? `You searched for “${q}”` : "You started a swap";
+  }
+
+  const bits: string[] = [];
+  const goals = prefs?.goals ?? [];
+  if (goals.length === 1) {
+    bits.push(goals[0] === "recipe" ? "wanting a recipe" : "wanting a real-food product to buy");
+  } else if (goals.length >= 2) {
+    bits.push("open to a recipe or a product");
+  }
+  if (prefs?.dietary_styles?.length) {
+    bits.push(`diet: ${prefs.dietary_styles.join(", ")}`);
+  }
+  if (prefs?.allergens?.length) {
+    bits.push(`avoiding ${prefs.allergens.join(", ")}`);
+  }
+  if (prefs?.max_prep_minutes) {
+    bits.push(`max ${prefs.max_prep_minutes}-min prep`);
+  }
+  if (prefs?.must_include?.length) {
+    bits.push(`must include ${prefs.must_include.join(", ")}`);
+  }
+  if (prefs?.prioritize?.length) {
+    bits.push(`prioritizing ${prefs.prioritize.join(", ")}`);
+  }
+
+  return bits.length > 0 ? `${action}, ${bits.join("; ")}.` : `${action}.`;
+}
+
+// Plain-English summary of what the agent did for this swap. Lives below the
+// "you selected" line so the reader can compare intent → routing decision.
+function summarize(trace: AgentTrace): string {
+  const productCount = trace.library_product_ids.length;
+  switch (trace.classification_reasoning) {
+    case "cache_hit":
+      return "Reused a recently-cached swap for this product — no new model call this time.";
+    case "library_hit": {
+      const parts: string[] = [];
+      if (trace.library_recipe_id) parts.push("a curated recipe");
+      if (productCount > 0)
+        parts.push(`${productCount} curated product${productCount === 1 ? "" : "s"}`);
+      const what = parts.length > 0 ? parts.join(" + ") : "a curated match";
+      return `Matched against the curated library — ${what} fit your search.`;
+    }
+    case "library_miss_llm_fallback":
+      return "No curated match — Claude wrote this from its training knowledge (no live web search).";
+    case "library_miss_web_fallback": {
+      const q = trace.web_searches.length;
+      const u = trace.web_urls_fetched.length;
+      const search = `searched the web (${q} ${q === 1 ? "query" : "queries"}, ${u} ${u === 1 ? "page" : "pages"})`;
+      const writeback = trace.library_written
+        ? " and added the discovered product to the library so future searches hit it directly."
+        : ".";
+      return `No curated match — Claude ${search}${writeback}`;
+    }
+    case "image_route":
+      return "You uploaded a photo — Claude identified the food and generated a swap.";
+    case "product_only_no_match":
+      return "You asked for a product-only swap, but the curated catalog has nothing relevant. No swap returned.";
+    default:
+      return `Routed via ${trace.classification_reasoning}.`;
+  }
 }
 
 export interface AgentDebug {
@@ -219,6 +377,38 @@ export function AgentDebugPanel({ result, debug, trace, loading }: Props) {
               Agent trace (testing only)
             </summary>
             <div className="mt-3 space-y-3">
+              {/* Plain-English summary — what the user put in, what was set,
+                  what we did. Structured so a non-engineer can read it.
+                  summarizeUserSelection is kept as a single-line fallback for
+                  screen readers (sr-only). */}
+              <span className="sr-only">{summarizeUserSelection(trace, debug)}</span>
+              <div className="rounded-soft bg-sage-soft/40 ring-1 ring-forest-700/15 px-3 py-3 space-y-2.5">
+                <SummaryRow
+                  label="In the swap window"
+                  value={`${inputDescription(trace).method} — ${inputDescription(trace).what}`}
+                />
+                <SummaryRow
+                  label="Preferences"
+                  value={
+                    preferenceLines(debug).length === 0
+                      ? "None set"
+                      : preferenceLines(debug).join(" · ")
+                  }
+                />
+                <SummaryRow label="What we did" value={summarize(trace)} />
+                {trace.web_searches.length > 0 && (
+                  <SummaryRow
+                    label="Searched"
+                    value={trace.web_searches.map((q) => `“${q}”`).join(", ")}
+                  />
+                )}
+                {trace.library_written && (
+                  <SummaryRow
+                    label="Library grew by"
+                    value="One new authorized-brand product was added so future searches will be instant."
+                  />
+                )}
+              </div>
               <div className="flex flex-wrap gap-1.5 text-xs">
                 <Chip label={`classify: ${trace.classification_reasoning}`} />
                 {trace.classification_confidence != null && (
@@ -318,6 +508,17 @@ export function AgentDebugPanel({ result, debug, trace, loading }: Props) {
           </details>
         </section>
       )}
+    </div>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5 items-baseline">
+      <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-forest-700">
+        {label}
+      </span>
+      <span className="text-sm text-ink leading-snug">{value}</span>
     </div>
   );
 }

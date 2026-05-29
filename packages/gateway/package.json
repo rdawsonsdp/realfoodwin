@@ -10,7 +10,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.27.0",
+    "@anthropic-ai/sdk": "^0.100.1",
     "@realfoodwin/agents": "workspace:*",
     "@realfoodwin/types": "workspace:*",
     "@supabase/supabase-js": "^2.45.0",

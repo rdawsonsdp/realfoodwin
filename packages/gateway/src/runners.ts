@@ -4,8 +4,14 @@ import {
   QuizSummary,
   RecipeBuilder,
 } from "@realfoodwin/agents";
-import { callWithTool, callText, type ImageInput } from "./llm/anthropic";
+import {
+  callWithTool,
+  callWithToolAndWebSearch,
+  callText,
+  type ImageInput,
+} from "./llm/anthropic";
 import { embed } from "./llm/voyage";
+import { getServiceSupabase } from "./supabase";
 import { loadUserContext, composePromptBlocks } from "./context";
 import { logAgentCall, calculateCost } from "./logging";
 import { cacheSwap, getCachedSwap } from "./cache";
@@ -18,6 +24,198 @@ import {
 } from "./library-match";
 
 export type ClientPlatform = "ios" | "android" | "web";
+
+// Domains we refuse to write into the library. Marketplaces, big-box, and
+// known review/listicle hosts aren't "the brand's own site" and embedding
+// their URLs into brand_products would mislead the matcher.
+const BLOCKED_PERSIST_DOMAINS = new Set([
+  "amazon.com",
+  "www.amazon.com",
+  "walmart.com",
+  "www.walmart.com",
+  "target.com",
+  "www.target.com",
+  "instacart.com",
+  "www.instacart.com",
+  "thrivemarket.com",
+  "www.thrivemarket.com",
+  "ebay.com",
+  "etsy.com",
+  "wikipedia.org",
+  "en.wikipedia.org",
+  "reddit.com",
+  "www.reddit.com",
+  "youtube.com",
+  "www.youtube.com",
+  "facebook.com",
+  "www.facebook.com",
+  "instagram.com",
+  "www.instagram.com",
+]);
+
+function isBrandSiteUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (BLOCKED_PERSIST_DOMAINS.has(host)) return false;
+    // Heuristic: listicle/blog paths often live under /best, /review,
+    // /roundup. Skip if the URL path screams "review article".
+    const path = u.pathname.toLowerCase();
+    if (/\b(best|review|roundup|vs|versus)\b/.test(path)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Find an existing brand by name (case-insensitive). Returns null when the
+// brand isn't already in the catalog — we DO NOT auto-create brands; the
+// authorized-brand list is curated by the Real Food Win team.
+async function findAuthorizedBrand(name: string): Promise<string | null> {
+  const sb = getServiceSupabase();
+  const trimmed = name.trim();
+  const { data: existing } = await sb
+    .from("brands")
+    .select("id")
+    .ilike("name", trimmed)
+    .maybeSingle();
+  return existing ? (existing as { id: string }).id : null;
+}
+
+interface PersistInput {
+  brandName: string;
+  productName: string;
+  description: string | null;
+  productUrl: string;
+  imageUrl: string | null;
+}
+
+// Insert a Sonnet-discovered product into brand_products with an embedding
+// so future "snickers"-style queries hit the library instead of paying for
+// another web fallback. Returns the product id, or null if we declined to
+// persist (bad domain, duplicate, error).
+async function persistDiscoveredProduct(input: PersistInput): Promise<string | null> {
+  if (!isBrandSiteUrl(input.productUrl)) return null;
+  const sb = getServiceSupabase();
+
+  // Dedupe by URL OR by (brand, name) — either match means it's already
+  // in the library and we should leave it alone.
+  const { data: byUrl } = await sb
+    .from("brand_products")
+    .select("id")
+    .eq("product_url", input.productUrl)
+    .maybeSingle();
+  if (byUrl) return (byUrl as { id: string }).id;
+
+  const brandId = await findAuthorizedBrand(input.brandName);
+  if (!brandId) {
+    // Sonnet returned a product from a brand we haven't authorized. The
+    // web_search tool's allowed_domains should have prevented this, but
+    // belt-and-suspenders: refuse to persist.
+    return null;
+  }
+  const { data: byName } = await sb
+    .from("brand_products")
+    .select("id")
+    .eq("brand_id", brandId)
+    .ilike("name", input.productName.trim())
+    .maybeSingle();
+  if (byName) return (byName as { id: string }).id;
+
+  // Embed the product text the same way the offline backfill does
+  // (title + description) so similarity scoring lines up.
+  const embedText = `${input.brandName.trim()}: ${input.productName.trim()}${
+    input.description ? ` — ${input.description}` : ""
+  }`;
+  let embedding: number[] | null = null;
+  try {
+    const { vector } = await embed(embedText, "document");
+    embedding = vector;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("[persistDiscoveredProduct] embed failed, inserting without vector:", err);
+  }
+
+  const { data: inserted, error } = await sb
+    .from("brand_products")
+    .insert({
+      brand_id: brandId,
+      name: input.productName.trim(),
+      description: input.description,
+      product_url: input.productUrl,
+      image_url: input.imageUrl,
+      tags: ["auto_web"],
+      embedding,
+    })
+    .select("id")
+    .single();
+  if (error || !inserted) {
+    // eslint-disable-next-line no-console
+    console.warn("[persistDiscoveredProduct] insert failed:", error?.message);
+    return null;
+  }
+  return (inserted as { id: string }).id;
+}
+
+// System-prompt suffix used when Sonnet runs with the web_search tool. The
+// search is restricted at the tool level (allowed_domains) to the brand
+// websites listed in our `brands` table — these are the brands the Real
+// Food Win team has explicitly authorized. The prompt mirrors that
+// constraint so the model knows the bound.
+function buildWebSearchPromptSuffix(authorizedHostnames: string[]): string {
+  const list = authorizedHostnames.length
+    ? authorizedHostnames.map((h) => `  - ${h}`).join("\n")
+    : "  (no brand websites are currently configured)";
+  return `
+
+You have access to the web_search tool. The tool is RESTRICTED to a curated
+list of authorized real-food brand websites — you cannot browse the open web,
+only these brand sites:
+${list}
+
+Use web_search ONLY when:
+- The user is asking for a real-food packaged product to BUY (goal: product), AND
+- You don't already know a specific authorized-brand product that's a strong fit.
+
+When you search:
+- Search for the food category + brand name OR keywords like "shop", "products".
+- Read product pages from the authorized brand sites listed above.
+- If a clear authorized-brand product surfaces, set product_url to its direct
+  page on the brand's own site and brand_name to the brand. Do not invent URLs.
+- If NO authorized brand carries a fit, do NOT recommend a non-authorized
+  product. Fall back to a recipe (write it from your own knowledge).
+
+Do NOT search for recipes — write recipes from your own knowledge.
+Do NOT run more than 3 searches for any one request.`;
+}
+
+// Pulls the list of authorized brand hostnames from the brands.website_url
+// column. We strip scheme + path and dedupe. Used to bound the web_search
+// tool's allowed_domains.
+async function getAuthorizedBrandHostnames(): Promise<string[]> {
+  try {
+    const sb = getServiceSupabase();
+    const { data } = await sb
+      .from("brands")
+      .select("website_url")
+      .not("website_url", "is", null);
+    const hosts = new Set<string>();
+    for (const row of (data ?? []) as Array<{ website_url: string | null }>) {
+      const url = row.website_url?.trim();
+      if (!url) continue;
+      try {
+        const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+        const host = u.hostname.replace(/^www\./, "");
+        if (host) hosts.add(host);
+      } catch {
+        // skip malformed
+      }
+    }
+    return Array.from(hosts).sort();
+  } catch {
+    return [];
+  }
+}
 
 // ---------------- Swap Generator ----------------
 
@@ -58,10 +256,11 @@ export interface SwapTrace {
     | "cache_hit"
     | "library_hit"
     | "library_miss_llm_fallback"
+    | "library_miss_web_fallback"
     | "image_route"
     | "product_only_no_match";
   classification_confidence: number | null;
-  source_chosen: "cache" | "library" | "llm" | "not_found";
+  source_chosen: "cache" | "library" | "llm" | "web" | "not_found";
   source_reasoning: string | null;
   db_match_found: boolean;
   library_recipe_id: string | null;
@@ -73,10 +272,15 @@ export interface SwapTrace {
   latency_pgvector_ms: number | null;
   latency_judge_ms: number | null;
   latency_llm_ms: number | null;
+  latency_web_ms: number | null;
   latency_total_ms: number;
   tokens_input: number | null;
   tokens_output: number | null;
   cost_usd: number | null;
+  web_searches: string[];
+  web_urls_fetched: string[];
+  library_written: boolean;
+  library_written_product_id: string | null;
 }
 
 // Convert a curated library match into a SwapGenerator.OutputSchema-shaped
@@ -251,10 +455,15 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
         latency_pgvector_ms: null,
         latency_judge_ms: null,
         latency_llm_ms: null,
+        latency_web_ms: null,
         latency_total_ms: Date.now() - overallStart,
         tokens_input: null,
         tokens_output: null,
         cost_usd: null,
+        web_searches: [],
+        web_urls_fetched: [],
+        library_written: false,
+        library_written_product_id: null,
       };
       return { cached: true, swap: hit, debug, trace };
     }
@@ -321,10 +530,15 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
           latency_pgvector_ms: match.timings.pgvector_ms,
           latency_judge_ms: match.timings.judge_ms,
           latency_llm_ms: null,
+          latency_web_ms: null,
           latency_total_ms: Date.now() - overallStart,
           tokens_input: null,
           tokens_output: null,
           cost_usd: null,
+          web_searches: [],
+          web_urls_fetched: [],
+          library_written: false,
+          library_written_product_id: null,
         };
         return {
           cached: false,
@@ -381,19 +595,48 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
   let usage = { input_tokens: 0, output_tokens: 0 };
   let model = "";
 
-  try {
-    const result = await callWithTool({
-      tier: "sonnet",
-      system: SwapGenerator.SYSTEM_PROMPT,
-      user: userPrompt,
-      tool: SwapGenerator.TOOL,
-      image: input.image,
-      heliconeUserId: input.userId ?? "anonymous",
-    });
-    usage = result.usage;
-    model = result.model;
+  // Image-route uses the plain tool call (vision identifies the food, no
+  // search needed). Text-only fallback gets the web_search tool: the model
+  // decides what to search for, reads result pages, and writes a swap that
+  // can include a REAL brand product URL.
+  const useWebSearch = !input.image;
+  let webSearches: string[] = [];
+  let webUrlsFetched: string[] = [];
+  let toolInput: unknown = null;
 
-    const parsed = SwapGenerator.OutputSchema.safeParse(result.toolInput);
+  try {
+    if (useWebSearch) {
+      const authorizedHostnames = await getAuthorizedBrandHostnames();
+      const result = await callWithToolAndWebSearch({
+        tier: "sonnet",
+        system:
+          SwapGenerator.SYSTEM_PROMPT + buildWebSearchPromptSuffix(authorizedHostnames),
+        user: userPrompt,
+        tool: SwapGenerator.TOOL,
+        heliconeUserId: input.userId ?? "anonymous",
+        maxWebSearches: 5,
+        allowedDomains: authorizedHostnames,
+      });
+      usage = result.usage;
+      model = result.model;
+      webSearches = result.webSearches;
+      webUrlsFetched = result.webUrlsFetched;
+      toolInput = result.toolInput;
+    } else {
+      const result = await callWithTool({
+        tier: "sonnet",
+        system: SwapGenerator.SYSTEM_PROMPT,
+        user: userPrompt,
+        tool: SwapGenerator.TOOL,
+        image: input.image,
+        heliconeUserId: input.userId ?? "anonymous",
+      });
+      usage = result.usage;
+      model = result.model;
+      toolInput = result.toolInput;
+    }
+
+    const parsed = SwapGenerator.OutputSchema.safeParse(toolInput);
     if (!parsed.success) {
       status = "error";
       throw new SchemaValidationError("Swap output failed schema", parsed.error.format());
@@ -433,11 +676,47 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
         title: a.title,
         kind: "alternate" as const,
       }));
+
+    // Library write-through: if Sonnet returned a product (URL + brand) AFTER
+    // running the web_search tool, persist it back so future searches hit the
+    // curated path. Skip writes if the product clearly came from training
+    // knowledge (no web search ran) — that signal is less trustworthy.
+    let libraryWritten = false;
+    let libraryWrittenProductId: string | null = null;
+    if (
+      useWebSearch &&
+      webSearches.length > 0 &&
+      parsed.data.product_url &&
+      parsed.data.brand_name
+    ) {
+      try {
+        libraryWrittenProductId = await persistDiscoveredProduct({
+          brandName: parsed.data.brand_name,
+          productName: parsed.data.title,
+          description: parsed.data.tagline ?? parsed.data.narrative ?? null,
+          productUrl: parsed.data.product_url,
+          imageUrl: parsed.data.product_image_url ?? null,
+        });
+        libraryWritten = libraryWrittenProductId !== null;
+      } catch (err) {
+        // Write-through is best-effort; the user already has their answer.
+        // eslint-disable-next-line no-console
+        console.warn("[runSwapGenerator] library write-through failed:", err);
+      }
+    }
+
+    const sourceChosen: SwapTrace["source_chosen"] = useWebSearch && webSearches.length > 0 ? "web" : "llm";
+    const classification: SwapTrace["classification_reasoning"] = input.image
+      ? "image_route"
+      : webSearches.length > 0
+        ? "library_miss_web_fallback"
+        : "library_miss_llm_fallback";
+
     const trace: SwapTrace = {
       request_id: requestId,
-      classification_reasoning: input.image ? "image_route" : "library_miss_llm_fallback",
+      classification_reasoning: classification,
       classification_confidence: null,
-      source_chosen: "llm",
+      source_chosen: sourceChosen,
       source_reasoning: null,
       db_match_found: false,
       library_recipe_id: null,
@@ -452,10 +731,15 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
       latency_pgvector_ms: null,
       latency_judge_ms: null,
       latency_llm_ms: llmMs,
+      latency_web_ms: useWebSearch ? llmMs : null,
       latency_total_ms: Date.now() - overallStart,
       tokens_input: usage.input_tokens,
       tokens_output: usage.output_tokens,
       cost_usd: calculateCost("sonnet", usage),
+      web_searches: webSearches,
+      web_urls_fetched: webUrlsFetched,
+      library_written: libraryWritten,
+      library_written_product_id: libraryWrittenProductId,
     };
     return { cached: false, swap: saved, output: parsed.data, latencyMs: llmMs, debug, trace };
   } finally {

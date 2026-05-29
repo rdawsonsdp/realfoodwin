@@ -132,6 +132,128 @@ export async function callWithTool(opts: ToolCallOptions): Promise<ToolCallResul
   }
 }
 
+// Web-search-enabled tool call. Sonnet receives BOTH the swap_generator
+// function tool AND the Anthropic-hosted web_search server tool, with
+// tool_choice 'auto' so the model decides how many times to search before
+// emitting the final swap. We extract the search queries it ran and the URLs
+// it fetched from the returned content blocks so the agent_traces row can
+// show "what Sonnet looked at to write this swap."
+export interface WebSearchToolCallOptions extends ToolCallOptions {
+  // Cap on web_search calls per request — protects cost. 5 is generous.
+  maxWebSearches?: number;
+  // Domains the web_search tool may fetch from. We restrict to the authorized
+  // brands in our `brands` table — Sonnet cannot roam the wider internet.
+  // Each entry is a bare hostname like "honeymamas.com" (no scheme, no path).
+  allowedDomains?: string[];
+}
+
+export interface WebSearchToolCallResult extends ToolCallResult {
+  webSearches: string[];
+  webUrlsFetched: string[];
+}
+
+export async function callWithToolAndWebSearch(
+  opts: WebSearchToolCallOptions,
+): Promise<WebSearchToolCallResult> {
+  const c = client();
+  const start = Date.now();
+  const model = await resolveModel(opts.tier);
+
+  const allImages: ImageInput[] = [
+    ...(opts.image ? [opts.image] : []),
+    ...(opts.images ?? []),
+  ];
+  const userContent: Anthropic.MessageParam["content"] =
+    allImages.length > 0
+      ? [
+          ...allImages.map(
+            (img): Anthropic.ImageBlockParam => ({
+              type: "image",
+              source: { type: "base64", media_type: img.mediaType, data: img.data },
+            }),
+          ),
+          { type: "text", text: opts.user },
+        ]
+      : opts.user;
+
+  // Web search tool is a SERVER tool — Anthropic runs it on our behalf and
+  // returns the results inline. Our function tool stays in the same array;
+  // tool_choice 'auto' lets the model pick. allowed_domains restricts the
+  // tool to authorized brand sites only.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const webSearchTool: any = {
+    type: "web_search_20250305",
+    name: "web_search",
+    max_uses: opts.maxWebSearches ?? 5,
+    ...(opts.allowedDomains && opts.allowedDomains.length > 0
+      ? { allowed_domains: opts.allowedDomains }
+      : {}),
+  };
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resp: any = await c.messages.create({
+      model,
+      max_tokens: opts.maxTokens ?? 4000,
+      temperature: opts.temperature ?? 0.7,
+      system: opts.system,
+      messages: [{ role: "user", content: userContent }],
+      // Anthropic SDK types don't yet include the web_search server tool; cast through.
+      tools: [
+        webSearchTool,
+        opts.tool as unknown as Anthropic.Tool,
+      ] as unknown as Anthropic.Tool[],
+      tool_choice: { type: "auto" },
+    });
+
+    // Find the function-tool emission for our swap_generator.
+    const block = (resp.content as Array<{ type: string; [k: string]: unknown }>).find(
+      (c) => c.type === "tool_use" && (c as { name?: string }).name === opts.tool.name,
+    );
+    if (!block) {
+      throw new AnthropicCallError("Model did not return the expected tool_use block", {
+        content: resp.content,
+      });
+    }
+    const toolInput = (block as { input?: unknown }).input;
+
+    // Walk the content blocks for server_tool_use (queries) and
+    // web_search_tool_result (URLs Sonnet fetched). Block names are defensive
+    // — exact shape varies by SDK minor version.
+    const webSearches: string[] = [];
+    const webUrlsFetched: string[] = [];
+    for (const c of resp.content as Array<{
+      type: string;
+      name?: string;
+      input?: { query?: string };
+      content?: Array<{ type?: string; url?: string }>;
+    }>) {
+      if (c.type === "server_tool_use" && c.name === "web_search" && c.input?.query) {
+        webSearches.push(c.input.query);
+      }
+      if (c.type === "web_search_tool_result" && Array.isArray(c.content)) {
+        for (const r of c.content) {
+          if (r?.url) webUrlsFetched.push(r.url);
+        }
+      }
+    }
+
+    return {
+      toolInput,
+      usage: {
+        input_tokens: resp.usage.input_tokens,
+        output_tokens: resp.usage.output_tokens,
+      },
+      latencyMs: Date.now() - start,
+      model,
+      webSearches,
+      webUrlsFetched,
+    };
+  } catch (err) {
+    rethrowAsCallError(err, model);
+  }
+}
+
 export interface TextCallOptions {
   tier: ModelTier;
   system: string;

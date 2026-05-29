@@ -25,6 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             so the underline border feels intentional rather than truncated. */}
         <nav className="flex gap-1 border-b border-white/10 mb-6 md:mb-8 overflow-x-auto scroll-row -mx-4 md:mx-0 px-4 md:px-0">
           <AdminTab href="/admin" label="Overview" />
+          <AdminTab href="/admin/observability" label="Observability" />
           <AdminTab href="/admin/personas" label="Personas" />
           <AdminTab href="/admin/brands" label="Brands" />
           <AdminTab href="/admin/recipes" label="Recipes" />
