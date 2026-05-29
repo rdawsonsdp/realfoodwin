@@ -27,13 +27,12 @@ import { compressImage, type PickedImage } from "@/lib/image-compress";
 import type { Quote } from "@/lib/quotes";
 
 interface Props {
-  greeting: string;
   quote: Quote;
   themeId: string;
   hasCustomBg: boolean;
 }
 
-export function SwapHero({ greeting, quote, themeId, hasCustomBg }: Props) {
+export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -187,9 +186,20 @@ export function SwapHero({ greeting, quote, themeId, hasCustomBg }: Props) {
   return (
     <>
     <section className="text-center">
-      <p className="text-white text-lg md:text-2xl font-extrabold tracking-tight mb-5 drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">
-        {greeting}
-      </p>
+      <div className="mb-6">
+        <span className="inline-block rounded-pill ring-1 ring-coral/50 px-4 py-1.5 text-coral text-[10px] md:text-xs font-bold tracking-[0.18em] uppercase">
+          Replace ultra-processed food with real food
+        </span>
+        <h1 className="mt-5 text-paper text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05] drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">
+          <span className="text-coral">Real Food</span>{" "}
+          <span className="italic font-serif">Diet Swaps</span>
+        </h1>
+        <p className="mt-4 text-paper/85 text-sm md:text-base max-w-[44ch] mx-auto leading-snug">
+          Type any product and press Enter — we&apos;ll show you the real food
+          version with ingredients, nutrition comparison, and a recipe you can
+          make today.
+        </p>
+      </div>
       <div
         className="relative mx-auto w-full max-w-md aspect-square
                    rounded-[2rem] bg-paper text-ink shadow-card
