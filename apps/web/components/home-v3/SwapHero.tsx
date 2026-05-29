@@ -363,7 +363,7 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
         aria-label="Swap result"
       >
         <div
-          className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-paper text-ink rounded-t-soft md:rounded-soft shadow-warm animate-fade-up"
+          className="relative w-full max-w-3xl max-h-[90dvh] overflow-y-auto bg-paper text-ink rounded-t-soft md:rounded-soft shadow-warm animate-fade-up"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="sticky top-0 z-20 flex items-center justify-end bg-paper/95 backdrop-blur-sm px-3 py-2 border-b border-ink/10">
@@ -404,7 +404,7 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
         aria-label="Swap preferences"
       >
         <div
-          className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-paper text-ink rounded-t-soft md:rounded-soft shadow-warm animate-fade-up"
+          className="relative w-full max-w-2xl max-h-[90dvh] overflow-y-auto bg-paper text-ink rounded-t-soft md:rounded-soft shadow-warm animate-fade-up"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between px-5 py-3 border-b border-ink/10 sticky top-0 bg-paper z-10">
@@ -449,6 +449,23 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
               </div>
               <ThemePicker currentThemeId={themeId} hasCustomBg={hasCustomBg} />
             </details>
+          </div>
+          {/* Sticky bottom action — preferences + theme save on-change, so this
+              is just an explicit "I'm done" affordance that's always
+              reachable without scrolling back to the header ×. Bottom padding
+              uses env(safe-area-inset-bottom) so the button clears the iOS
+              home indicator / Safari URL bar on mobile. */}
+          <div
+            className="sticky bottom-0 bg-paper border-t border-ink/10 px-4 pt-3 md:px-6 md:pt-4"
+            style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.75rem)" }}
+          >
+            <button
+              type="button"
+              onClick={() => setPrefsOpen(false)}
+              className="w-full inline-flex items-center justify-center rounded-pill bg-forest-700 text-white font-bold text-sm md:text-base px-4 py-3 hover:brightness-110 active:scale-[0.98] transition shadow-warm"
+            >
+              Done
+            </button>
           </div>
         </div>
       </div>
