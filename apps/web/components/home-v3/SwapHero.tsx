@@ -7,10 +7,10 @@
 // posts to /api/swap and renders the result in a popup overlay so the user
 // never leaves the home page.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { VoiceButton } from "@/components/VoiceButton";
-import { BarcodeButton } from "@/components/BarcodeButton";
+import { ScanButton } from "@/components/home-v3/ScanButton";
 import { SwapResultCard, type SwapResult } from "@/components/SwapResultCard";
 import {
   SwapPreferences,
@@ -45,7 +45,6 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
   const [noMatchMessage, setNoMatchMessage] = useState<string | null>(null);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefs, setPrefs] = useState<SwapPrefsValue>(EMPTY_PREFS);
-  const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const popupOpen =
     result !== null || noMatchMessage !== null || prefsOpen;
@@ -266,7 +265,7 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
           </button>
         </div>
 
-        {/* Lower-right action chips: voice · photo · scan. */}
+        {/* Lower-right action chips: voice + unified scan (barcode OR photo). */}
         <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
           <VoiceButton
             disabled={loading}
@@ -275,17 +274,9 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
               if (isFinal && t.trim().length >= 2) void submit(null, t);
             }}
           />
-          <button
-            type="button"
-            aria-label="Snap a photo"
-            onClick={() => cameraInputRef.current?.click()}
+          <ScanButton
             disabled={loading}
-            className="w-11 h-11 rounded-full bg-ink/15 hover:bg-ink/25 active:scale-95 transition flex items-center justify-center text-xl ring-1 ring-ink/20 disabled:opacity-50"
-          >
-            <span aria-hidden>📷</span>
-          </button>
-          <BarcodeButton
-            disabled={loading}
+            onPhoto={(file) => void handleFile(file)}
             onScan={async (code) => {
               setLoading(true);
               setError(null);
@@ -328,20 +319,6 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
             }}
           />
         </div>
-
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            await handleFile(file);
-            e.target.value = "";
-          }}
-        />
       </div>
       <p className="mt-4 text-sm md:text-base text-paper/70 max-w-[28ch] mx-auto">
         One small upgrade. That&apos;s the whole game.
