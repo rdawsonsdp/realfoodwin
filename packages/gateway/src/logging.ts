@@ -24,6 +24,8 @@ export interface AgentCallLog {
   latency_ms: number;
   status: "success" | "error";
   client_platform: "ios" | "android" | "web";
+  // Joins this LLM call to a row in agent_traces (one row per /api/swap).
+  request_id?: string | null;
 }
 
 export async function logAgentCall(entry: AgentCallLog): Promise<void> {

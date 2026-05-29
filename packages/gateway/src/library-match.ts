@@ -49,6 +49,20 @@ export interface LibraryMatchResult {
   cached: boolean;
   source: "cache" | "live";
   durationMs: number;
+  // Per-step breakdown for the trace. Null when the step didn't run (e.g.,
+  // cache hit short-circuits embed/pgvector/judge).
+  timings: {
+    cache_ms: number | null;
+    embed_ms: number | null;
+    pgvector_ms: number | null;
+    judge_ms: number | null;
+  };
+  // Haiku judge's one-sentence rationale. Surfaced for the agent_traces row
+  // so we can see why a candidate was or wasn't picked.
+  judgeReason: string | null;
+  // Cosine similarity of the winning candidate (recipe OR best product).
+  // Loose proxy for "match strength".
+  topSimilarity: number | null;
 }
 
 export interface LibraryMatchInput {
@@ -235,6 +249,9 @@ export async function matchLibrary(
       cached: false,
       source: "live",
       durationMs: 0,
+      timings: { cache_ms: null, embed_ms: null, pgvector_ms: null, judge_ms: null },
+      judgeReason: null,
+      topSimilarity: null,
     };
   }
   const wantRecipe = input.goals.length === 0 || input.goals.includes("recipe");
@@ -250,7 +267,9 @@ export async function matchLibrary(
   // "we looked and found none" — reusing it would silently skip products on
   // later requests that want them. goals=[] in the cache row means we
   // searched both, so it's compatible with anything.
+  const cacheStart = Date.now();
   const cached = await readCache(queryLc);
+  const cacheMs = Date.now() - cacheStart;
   if (cached) {
     const cachedGoals = (cached.goals ?? []) as SwapGoal[];
     const cacheSearchedBoth = cachedGoals.length === 0;
@@ -271,15 +290,21 @@ export async function matchLibrary(
         cached: true,
         source: "cache",
         durationMs: Date.now() - start,
+        timings: { cache_ms: cacheMs, embed_ms: null, pgvector_ms: null, judge_ms: null },
+        judgeReason: null,
+        topSimilarity: null,
       };
     }
   }
 
   // 2. Embed query.
+  const embedStart = Date.now();
   const { vector } = await embed(input.query, "query");
+  const embedMs = Date.now() - embedStart;
   const sb = getServiceSupabase();
 
   // 3. pgvector top-K shortlists.
+  const pgvectorStart = Date.now();
   const [recipeRpc, productRpc] = await Promise.all([
     wantRecipe
       ? sb.rpc("match_recipes", { query_embedding: vector as unknown as string, k: topK })
@@ -290,6 +315,7 @@ export async function matchLibrary(
   ]);
   const recipeCandidates = (recipeRpc.data ?? []) as Array<MatchedRecipe & { similarity: number }>;
   const productCandidates = (productRpc.data ?? []) as Array<MatchedProduct & { similarity: number }>;
+  const pgvectorMs = Date.now() - pgvectorStart;
 
   if (recipeCandidates.length === 0 && productCandidates.length === 0) {
     return {
@@ -299,10 +325,14 @@ export async function matchLibrary(
       cached: false,
       source: "live",
       durationMs: Date.now() - start,
+      timings: { cache_ms: cacheMs, embed_ms: embedMs, pgvector_ms: pgvectorMs, judge_ms: null },
+      judgeReason: null,
+      topSimilarity: null,
     };
   }
 
   // 4. Haiku judge.
+  const judgeStart = Date.now();
   const userPrompt = [
     `USER QUERY: "${input.query.trim()}"`,
     `GOALS: ${input.goals.length ? input.goals.join(", ") : "either recipe or product"}`,
@@ -326,6 +356,7 @@ export async function matchLibrary(
     product_ids: string[];
     reason: string;
   };
+  const judgeMs = Date.now() - judgeStart;
 
   // Defensive: only accept IDs that were in the shortlist (model could
   // hallucinate). And only honor the recipe / product pick if its goal
@@ -352,6 +383,19 @@ export async function matchLibrary(
     void writeCache(queryLc, input.goals, recipe?.id ?? null, products.map((p) => p.id));
   }
 
+  // Winning candidate's cosine similarity — a loose match-strength proxy for
+  // the trace. Picks the highest of (best picked recipe, best picked product).
+  const pickedRecipeSim = pickedRecipeId
+    ? recipeCandidates.find((r) => r.id === pickedRecipeId)?.similarity ?? null
+    : null;
+  const pickedProductSims = pickedProductIds
+    .map((id) => productCandidates.find((p) => p.id === id)?.similarity ?? null)
+    .filter((s): s is number => s != null);
+  const topSimilarity =
+    pickedRecipeSim != null || pickedProductSims.length > 0
+      ? Math.max(pickedRecipeSim ?? 0, ...pickedProductSims)
+      : null;
+
   return {
     recipe,
     products,
@@ -359,5 +403,8 @@ export async function matchLibrary(
     cached: false,
     source: "live",
     durationMs: Date.now() - start,
+    timings: { cache_ms: cacheMs, embed_ms: embedMs, pgvector_ms: pgvectorMs, judge_ms: judgeMs },
+    judgeReason: judgement.reason ?? null,
+    topSimilarity,
   };
 }

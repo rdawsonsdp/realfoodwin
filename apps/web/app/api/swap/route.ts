@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
   runSwapGenerator,
   ModelNotFoundError,
   NoLibraryProductsError,
   type SwapPreferencesInput,
+  type SwapTrace,
 } from "@realfoodwin/gateway";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getMemorySummary } from "@/lib/coach-memory";
+import { requireEnv } from "@/lib/env";
 
 export const runtime = "nodejs"; // Anthropic SDK needs Node, not Edge
 export const dynamic = "force-dynamic";
@@ -22,6 +26,71 @@ function dedup(items: string[]): string[] {
     out.push(it.trim());
   }
   return out;
+}
+
+function admin() {
+  return createClient(
+    requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
+    requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    { auth: { persistSession: false } },
+  );
+}
+
+function inputTypeOf(query: string, hasImage: boolean): "text" | "image" | "barcode" | "voice" {
+  if (hasImage) return "image";
+  // Pure-digit queries from BarcodeButton come through the barcode resolver
+  // (which renames them with the resolved brand+name), but on resolver
+  // failures we send the raw digits along — treat those as 'barcode'.
+  if (/^\d{6,18}$/.test(query.trim())) return "barcode";
+  return "text";
+}
+
+async function writeTrace(
+  trace: SwapTrace,
+  ctx: {
+    userId: string | null;
+    inputType: "text" | "image" | "barcode" | "voice";
+    inputQuery: string | null;
+    inputImagePresent: boolean;
+    inputMeta: Record<string, unknown>;
+    swapId: string | null;
+    clientPlatform: "ios" | "android" | "web";
+  },
+): Promise<void> {
+  try {
+    await admin().from("agent_traces").insert({
+      request_id: trace.request_id,
+      user_id: ctx.userId,
+      input_type: ctx.inputType,
+      input_query: ctx.inputQuery,
+      input_image_present: ctx.inputImagePresent,
+      input_meta: ctx.inputMeta,
+      category_implicit: trace.category_implicit,
+      classification_reasoning: trace.classification_reasoning,
+      classification_confidence: trace.classification_confidence,
+      source_chosen: trace.source_chosen,
+      source_reasoning: trace.source_reasoning,
+      db_match_found: trace.db_match_found,
+      library_recipe_id: trace.library_recipe_id,
+      library_product_ids: trace.library_product_ids,
+      swap_id: ctx.swapId,
+      recommendations: trace.recommendations,
+      latency_cache_ms: trace.latency_cache_ms,
+      latency_embed_ms: trace.latency_embed_ms,
+      latency_pgvector_ms: trace.latency_pgvector_ms,
+      latency_judge_ms: trace.latency_judge_ms,
+      latency_llm_ms: trace.latency_llm_ms,
+      latency_total_ms: trace.latency_total_ms,
+      tokens_input: trace.tokens_input,
+      tokens_output: trace.tokens_output,
+      cost_usd: trace.cost_usd,
+      client_platform: ctx.clientPlatform,
+    });
+  } catch (err) {
+    // Trace logging must never break the user-facing call.
+    // eslint-disable-next-line no-console
+    console.error("[/api/swap] failed to write agent_traces:", err);
+  }
 }
 
 const ImageSchema = z.object({
@@ -92,11 +161,16 @@ export async function POST(req: Request) {
     }
   }
 
+  const requestId = randomUUID();
+  const query = parsed.data.query ?? "";
+  const hasImage = !!parsed.data.image;
+  const inputType = inputTypeOf(query, hasImage);
+
   try {
     const result = await runSwapGenerator({
       userId: user?.id ?? null,
       productId: parsed.data.product_id ?? null,
-      request: parsed.data.query ?? "",
+      request: query,
       image: parsed.data.image
         ? { mediaType: parsed.data.image.media_type, data: parsed.data.image.data }
         : undefined,
@@ -105,7 +179,22 @@ export async function POST(req: Request) {
       feedback: parsed.data.feedback ?? null,
       clientPlatform: "web",
       skipCache: parsed.data.skip_cache,
+      requestId,
     });
+
+    // Persist the per-request trace row. Fire-and-forget so trace writes never
+    // block the user-facing response.
+    if ("trace" in result && result.trace) {
+      void writeTrace(result.trace, {
+        userId: user?.id ?? null,
+        inputType,
+        inputQuery: query || null,
+        inputImagePresent: hasImage,
+        inputMeta: { product_id: parsed.data.product_id ?? null },
+        swapId: result.swap?.id ?? null,
+        clientPlatform: "web",
+      });
+    }
 
     // Append a behavioral event so the user's signal trail grows from the first interaction.
     if (user?.id) {
@@ -115,13 +204,15 @@ export async function POST(req: Request) {
         target_type: "swap",
         target_id: result.swap?.id ?? null,
         client_platform: "web",
-        metadata: { query: parsed.data.query, cached: result.cached },
+        metadata: { query, cached: result.cached },
+        request_id: requestId,
       });
     }
 
     return NextResponse.json({
       ok: true,
       data: {
+        request_id: requestId,
         cached: result.cached,
         swap: result.swap,
         output: "output" in result ? result.output : null,
@@ -129,6 +220,7 @@ export async function POST(req: Request) {
         source: "source" in result ? result.source : "llm",
         library_hit: "libraryHit" in result ? result.libraryHit : null,
         debug: "debug" in result ? result.debug : null,
+        trace: "trace" in result ? result.trace : null,
       },
     });
   } catch (err) {
@@ -138,9 +230,42 @@ export async function POST(req: Request) {
       // Not a real failure — the user asked for a product, none of our
       // curated brands carry it. 200 with a clean "no match" payload so the
       // UI can show a helpful message instead of an error toast.
+      void writeTrace(
+        {
+          request_id: requestId,
+          classification_reasoning: "product_only_no_match",
+          classification_confidence: null,
+          source_chosen: "not_found",
+          source_reasoning: null,
+          db_match_found: false,
+          library_recipe_id: null,
+          library_product_ids: [],
+          category_implicit: null,
+          recommendations: [],
+          latency_cache_ms: null,
+          latency_embed_ms: null,
+          latency_pgvector_ms: null,
+          latency_judge_ms: null,
+          latency_llm_ms: null,
+          latency_total_ms: 0,
+          tokens_input: null,
+          tokens_output: null,
+          cost_usd: null,
+        },
+        {
+          userId: user?.id ?? null,
+          inputType,
+          inputQuery: query || null,
+          inputImagePresent: hasImage,
+          inputMeta: { product_id: parsed.data.product_id ?? null },
+          swapId: null,
+          clientPlatform: "web",
+        },
+      );
       return NextResponse.json({
         ok: true,
         data: {
+          request_id: requestId,
           cached: false,
           swap: null,
           output: null,

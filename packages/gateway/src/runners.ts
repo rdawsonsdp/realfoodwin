@@ -43,6 +43,40 @@ export interface SwapGeneratorRunInput {
   feedback?: string | null;
   clientPlatform: ClientPlatform;
   skipCache?: boolean;
+  // Per-request trace id minted by /api/swap. Threads through agent_calls and
+  // events so a single id walks the whole pipeline.
+  requestId?: string | null;
+}
+
+// Structured per-request trace payload. The /api/swap route writes this to
+// the agent_traces table verbatim and the client surfaces it in the debug
+// panel below the swap card. classification_reasoning is the implicit
+// routing tag, not a real classifier output.
+export interface SwapTrace {
+  request_id: string | null;
+  classification_reasoning:
+    | "cache_hit"
+    | "library_hit"
+    | "library_miss_llm_fallback"
+    | "image_route"
+    | "product_only_no_match";
+  classification_confidence: number | null;
+  source_chosen: "cache" | "library" | "llm" | "not_found";
+  source_reasoning: string | null;
+  db_match_found: boolean;
+  library_recipe_id: string | null;
+  library_product_ids: string[];
+  category_implicit: string | null;
+  recommendations: Array<{ id: string | null; title: string; kind: "primary" | "alternate" }>;
+  latency_cache_ms: number | null;
+  latency_embed_ms: number | null;
+  latency_pgvector_ms: number | null;
+  latency_judge_ms: number | null;
+  latency_llm_ms: number | null;
+  latency_total_ms: number;
+  tokens_input: number | null;
+  tokens_output: number | null;
+  cost_usd: number | null;
 }
 
 // Convert a curated library match into a SwapGenerator.OutputSchema-shaped
@@ -183,6 +217,9 @@ function digestUserContext(ctx: Awaited<ReturnType<typeof loadUserContext>>): Sw
 }
 
 export async function runSwapGenerator(input: SwapGeneratorRunInput) {
+  const overallStart = Date.now();
+  const requestId = input.requestId ?? null;
+
   // Cache hit?
   if (input.userId && input.productId && !input.skipCache) {
     const hit = await getCachedSwap(input.userId, input.productId);
@@ -198,7 +235,28 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
         user_context: null,
         user_prompt: null,
       };
-      return { cached: true, swap: hit, debug };
+      const trace: SwapTrace = {
+        request_id: requestId,
+        classification_reasoning: "cache_hit",
+        classification_confidence: null,
+        source_chosen: "cache",
+        source_reasoning: null,
+        db_match_found: true,
+        library_recipe_id: null,
+        library_product_ids: [],
+        category_implicit: null,
+        recommendations: [{ id: hit?.id ?? null, title: "(cached swap)", kind: "primary" }],
+        latency_cache_ms: null,
+        latency_embed_ms: null,
+        latency_pgvector_ms: null,
+        latency_judge_ms: null,
+        latency_llm_ms: null,
+        latency_total_ms: Date.now() - overallStart,
+        tokens_input: null,
+        tokens_output: null,
+        cost_usd: null,
+      };
+      return { cached: true, swap: hit, debug, trace };
     }
   }
 
@@ -238,6 +296,36 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
           user_context: null,
           user_prompt: null,
         };
+        const recommendations: SwapTrace["recommendations"] = [
+          { id: match.recipe?.id ?? null, title: output.title, kind: "primary" as const },
+          ...match.products.slice(0, 8).map((p, i) => ({
+            id: p.id,
+            title: `${p.brand_name}: ${p.name}`,
+            kind: i === 0 && !match.recipe ? ("primary" as const) : ("alternate" as const),
+          })),
+        ].filter((r, i, arr) => arr.findIndex((x) => x.title === r.title) === i);
+        const trace: SwapTrace = {
+          request_id: requestId,
+          classification_reasoning: "library_hit",
+          classification_confidence: match.topSimilarity,
+          source_chosen: "library",
+          source_reasoning: match.judgeReason,
+          db_match_found: true,
+          library_recipe_id: match.recipe?.id ?? null,
+          library_product_ids: match.products.map((p) => p.id),
+          category_implicit:
+            match.recipe?.meal_type ?? match.products[0]?.brand_name ?? null,
+          recommendations,
+          latency_cache_ms: match.timings.cache_ms,
+          latency_embed_ms: match.timings.embed_ms,
+          latency_pgvector_ms: match.timings.pgvector_ms,
+          latency_judge_ms: match.timings.judge_ms,
+          latency_llm_ms: null,
+          latency_total_ms: Date.now() - overallStart,
+          tokens_input: null,
+          tokens_output: null,
+          cost_usd: null,
+        };
         return {
           cached: false,
           swap: saved,
@@ -250,6 +338,7 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
             fromCache: match.cached,
           },
           debug,
+          trace,
         };
       }
       // Only surface the explicit "no products found" message when the
@@ -336,7 +425,39 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
       user_context: digestUserContext(ctx),
       user_prompt: userPrompt,
     };
-    return { cached: false, swap: saved, output: parsed.data, latencyMs: Date.now() - start, debug };
+    const llmMs = Date.now() - start;
+    const altRecs: SwapTrace["recommendations"] = (parsed.data.alternates ?? [])
+      .slice(0, 8)
+      .map((a) => ({
+        id: null,
+        title: a.title,
+        kind: "alternate" as const,
+      }));
+    const trace: SwapTrace = {
+      request_id: requestId,
+      classification_reasoning: input.image ? "image_route" : "library_miss_llm_fallback",
+      classification_confidence: null,
+      source_chosen: "llm",
+      source_reasoning: null,
+      db_match_found: false,
+      library_recipe_id: null,
+      library_product_ids: [],
+      category_implicit: parsed.data.recipe?.meal_type ?? null,
+      recommendations: [
+        { id: saved?.id ?? null, title: parsed.data.title, kind: "primary" },
+        ...altRecs,
+      ],
+      latency_cache_ms: null,
+      latency_embed_ms: null,
+      latency_pgvector_ms: null,
+      latency_judge_ms: null,
+      latency_llm_ms: llmMs,
+      latency_total_ms: Date.now() - overallStart,
+      tokens_input: usage.input_tokens,
+      tokens_output: usage.output_tokens,
+      cost_usd: calculateCost("sonnet", usage),
+    };
+    return { cached: false, swap: saved, output: parsed.data, latencyMs: llmMs, debug, trace };
   } finally {
     await logAgentCall({
       user_id: input.userId,
@@ -349,6 +470,7 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
       latency_ms: Date.now() - start,
       status,
       client_platform: input.clientPlatform,
+      request_id: requestId,
     });
   }
 }

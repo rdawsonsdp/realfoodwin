@@ -8,6 +8,28 @@
 
 import type { SwapResult } from "@/components/SwapResultCard";
 
+export interface AgentTrace {
+  request_id: string | null;
+  classification_reasoning: string;
+  classification_confidence: number | null;
+  source_chosen: "cache" | "library" | "llm" | "not_found";
+  source_reasoning: string | null;
+  db_match_found: boolean;
+  library_recipe_id: string | null;
+  library_product_ids: string[];
+  category_implicit: string | null;
+  recommendations: Array<{ id: string | null; title: string; kind: "primary" | "alternate" }>;
+  latency_cache_ms: number | null;
+  latency_embed_ms: number | null;
+  latency_pgvector_ms: number | null;
+  latency_judge_ms: number | null;
+  latency_llm_ms: number | null;
+  latency_total_ms: number;
+  tokens_input: number | null;
+  tokens_output: number | null;
+  cost_usd: number | null;
+}
+
 export interface AgentDebug {
   source: "library" | "llm" | "cache";
   model: string | null;
@@ -38,6 +60,7 @@ export interface AgentDebug {
 interface Props {
   result: SwapResult | null;
   debug: AgentDebug | null;
+  trace: AgentTrace | null;
   loading: boolean;
 }
 
@@ -47,7 +70,7 @@ const SOURCE_LABEL: Record<AgentDebug["source"], string> = {
   cache: "⚡ Cache",
 };
 
-export function AgentDebugPanel({ result, debug, loading }: Props) {
+export function AgentDebugPanel({ result, debug, trace, loading }: Props) {
   if (loading) {
     return (
       <div className="mt-6 rounded-soft bg-paper/90 text-ink ring-1 ring-ink/10 px-4 py-3 shadow-sm">
@@ -56,7 +79,7 @@ export function AgentDebugPanel({ result, debug, loading }: Props) {
       </div>
     );
   }
-  if (!result && !debug) {
+  if (!result && !debug && !trace) {
     return (
       <div className="mt-6 rounded-soft bg-paper/80 text-ink ring-1 ring-ink/10 px-4 py-3 shadow-sm">
         <Header />
@@ -183,6 +206,98 @@ export function AgentDebugPanel({ result, debug, loading }: Props) {
             <pre className="mt-1 max-h-60 overflow-auto rounded bg-ink/5 px-2 py-2 text-[11px] leading-snug whitespace-pre-wrap break-words">
               {JSON.stringify(ctx, null, 2)}
             </pre>
+          </details>
+        </section>
+      )}
+
+      {/* TRACE — per-step latency, classification + source reasoning, picks,
+          token + cost totals. Collapsed by default; this is testing-only. */}
+      {trace && (
+        <section>
+          <details>
+            <summary className="cursor-pointer text-[11px] uppercase tracking-[0.16em] font-bold text-forest-700 select-none">
+              Agent trace (testing only)
+            </summary>
+            <div className="mt-3 space-y-3">
+              <div className="flex flex-wrap gap-1.5 text-xs">
+                <Chip label={`classify: ${trace.classification_reasoning}`} />
+                {trace.classification_confidence != null && (
+                  <Chip label={`confidence: ${trace.classification_confidence.toFixed(3)}`} />
+                )}
+                <Chip label={`source: ${trace.source_chosen}`} />
+                <Chip label={trace.db_match_found ? "✓ db match" : "✗ db match"} />
+                {trace.category_implicit && (
+                  <Chip label={`category: ${trace.category_implicit}`} />
+                )}
+              </div>
+              {trace.source_reasoning && (
+                <KeyValue label="Source reasoning" value={trace.source_reasoning} />
+              )}
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-ink/60 font-bold mb-1">
+                  Latency breakdown (ms)
+                </p>
+                <div className="flex flex-wrap gap-1.5 text-xs">
+                  <Chip label={`total: ${trace.latency_total_ms}`} />
+                  {trace.latency_cache_ms != null && (
+                    <Chip label={`cache: ${trace.latency_cache_ms}`} />
+                  )}
+                  {trace.latency_embed_ms != null && (
+                    <Chip label={`embed: ${trace.latency_embed_ms}`} />
+                  )}
+                  {trace.latency_pgvector_ms != null && (
+                    <Chip label={`pgvector: ${trace.latency_pgvector_ms}`} />
+                  )}
+                  {trace.latency_judge_ms != null && (
+                    <Chip label={`judge: ${trace.latency_judge_ms}`} />
+                  )}
+                  {trace.latency_llm_ms != null && (
+                    <Chip label={`llm: ${trace.latency_llm_ms}`} />
+                  )}
+                </div>
+              </div>
+              {(trace.tokens_input != null || trace.cost_usd != null) && (
+                <div className="flex flex-wrap gap-1.5 text-xs">
+                  {trace.tokens_input != null && (
+                    <Chip label={`tokens in: ${trace.tokens_input}`} />
+                  )}
+                  {trace.tokens_output != null && (
+                    <Chip label={`tokens out: ${trace.tokens_output}`} />
+                  )}
+                  {trace.cost_usd != null && (
+                    <Chip label={`cost: $${trace.cost_usd.toFixed(5)}`} />
+                  )}
+                </div>
+              )}
+              {trace.recommendations.length > 0 && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-ink/60 font-bold mb-1">
+                    Recommendations
+                  </p>
+                  <ol className="list-decimal pl-5 text-xs space-y-0.5 text-ink-soft">
+                    {trace.recommendations.map((r, i) => (
+                      <li key={`${r.title}-${i}`}>
+                        <span
+                          className={
+                            r.kind === "primary"
+                              ? "font-semibold text-ink"
+                              : "text-ink-soft"
+                          }
+                        >
+                          {r.title}
+                        </span>{" "}
+                        <span className="text-ink/40">— {r.kind}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+              {trace.request_id && (
+                <p className="text-[10px] text-ink/40 font-mono">
+                  request_id: {trace.request_id}
+                </p>
+              )}
+            </div>
           </details>
         </section>
       )}

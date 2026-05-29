@@ -21,6 +21,7 @@ import { ThemePicker } from "@/components/home-v3/ThemePicker";
 import {
   AgentDebugPanel,
   type AgentDebug,
+  type AgentTrace,
 } from "@/components/home-v3/AgentDebugPanel";
 import { SwapLoader } from "@/components/home-v3/SwapLoader";
 import { compressImage, type PickedImage } from "@/lib/image-compress";
@@ -42,6 +43,7 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
   // keeps showing the most recent agent decision.
   const [lastResult, setLastResult] = useState<SwapResult | null>(null);
   const [lastDebug, setLastDebug] = useState<AgentDebug | null>(null);
+  const [lastTrace, setLastTrace] = useState<AgentTrace | null>(null);
   const [noMatchMessage, setNoMatchMessage] = useState<string | null>(null);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefs, setPrefs] = useState<SwapPrefsValue>(EMPTY_PREFS);
@@ -104,6 +106,7 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
           no_match?: boolean;
           message?: string;
           debug?: AgentDebug | null;
+          trace?: AgentTrace | null;
         };
         error?: { message?: string };
       } | null;
@@ -130,6 +133,7 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
         setResult(next);
         setLastResult(next);
         setLastDebug(data.debug ?? null);
+        setLastTrace(data.trace ?? null);
         // Increment the user's swap counts/streak. /api/swap already logs a
         // `viewed_swap` event; this is the "ran a swap on /home-v3" signal
         // that the SwapCounter query (MADE_EVENT_TYPES) picks up.
@@ -327,6 +331,7 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
       <AgentDebugPanel
         result={lastResult}
         debug={lastDebug}
+        trace={lastTrace}
         loading={loading && !lastResult}
       />
     </section>
