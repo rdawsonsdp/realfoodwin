@@ -426,6 +426,15 @@ export function SwapResultCard({
           </div>
         </Disclosure>
 
+        {/* Real Products — sits directly after the recipe so the user reads
+            "make it OR buy it" as one decision. */}
+        {currentOutput.alternates && currentOutput.alternates.length > 0 && (
+          <AlternatesRow
+            alternates={currentOutput.alternates}
+            onPick={(alt) => promoteAlternate(alt)}
+          />
+        )}
+
         {nutritionKeys > 0 && (
           <Disclosure
             title="Nutrition"
@@ -504,13 +513,6 @@ export function SwapResultCard({
             </button>
           )}
         </div>
-      )}
-
-      {currentOutput.alternates && currentOutput.alternates.length > 0 && (
-        <AlternatesRow
-          alternates={currentOutput.alternates}
-          onPick={(alt) => promoteAlternate(alt)}
-        />
       )}
 
     </article>
@@ -602,7 +604,7 @@ function AlternatesRow({
   return (
     <div className="px-5 md:px-8 pb-6 pt-4 border-t border-ink/5 bg-paper/40">
       <p className="text-xs uppercase tracking-[0.18em] text-ink-muted mb-3">
-        Other ideas (no extra wait)
+        Real Products
       </p>
       <div className="flex gap-3 overflow-x-auto scroll-row -mx-5 md:-mx-0 px-5 md:px-0 pb-2">
         {alternates.map((alt, i) => (
