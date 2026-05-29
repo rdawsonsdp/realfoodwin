@@ -11,8 +11,10 @@ import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { SwapHero } from "@/components/home-v3/SwapHero";
 import { SwapCounter } from "@/components/home-v3/SwapCounter";
+import { RecentSwapsCarousel } from "@/components/home-v3/RecentSwapsCarousel";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getSwapCounts } from "@/lib/swap-counts";
+import { getRecentSwaps } from "@/lib/home-v2-stats";
 import { getQuoteForToday } from "@/lib/quotes";
 import { getTheme, buildCustomTheme, CUSTOM_THEME_ID } from "@/lib/home-themes";
 
@@ -27,13 +29,14 @@ export default async function HomeV3() {
 
   const now = new Date();
 
-  const [counts, prefsRow] = await Promise.all([
+  const [counts, prefsRow, recent] = await Promise.all([
     getSwapCounts(user.id, now),
     supabase
       .from("user_preferences")
       .select("ui_prefs")
       .eq("user_id", user.id)
       .maybeSingle(),
+    getRecentSwaps(user.id, 10),
   ]);
 
   const quote = getQuoteForToday(now);
@@ -57,6 +60,7 @@ export default async function HomeV3() {
           hasCustomBg={!!uiPrefs.custom_bg}
         />
         <SwapCounter counts={counts} />
+        <RecentSwapsCarousel items={recent} />
       </main>
       <footer
         className={`text-center text-xs py-8 ${
