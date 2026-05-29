@@ -287,8 +287,16 @@ export function SwapHero({ greeting, quote, themeId, hasCustomBg }: Props) {
                 });
                 if (resolveResp.ok) {
                   const json = (await resolveResp.json()) as {
-                    data?: { name?: string; brand?: string | null };
+                    data?: {
+                      name?: string;
+                      brand?: string | null;
+                      timings?: Record<string, number | string | null>;
+                    };
                   };
+                  if (json.data?.timings) {
+                    // eslint-disable-next-line no-console
+                    console.log("[barcode]", json.data.timings);
+                  }
                   const name = json.data?.name?.trim();
                   if (name) {
                     const friendly = json.data?.brand
