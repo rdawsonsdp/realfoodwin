@@ -103,8 +103,47 @@ export function KitchenTabs({
 
   return (
     <div>
-      <div className="mb-5 flex flex-col md:flex-row md:items-center gap-3">
-        <div className="inline-flex items-center gap-1 rounded-pill bg-paper/15 ring-1 ring-paper/20 p-1 backdrop-blur-sm self-start">
+      {/* Primary action row: a big search bar + a small scan button. Search
+          is the dominant control because finding a product or recipe is the
+          point of this page. The 📷 button is a quick affordance for the
+          photo-to-recipe builder; it stays small so it doesn't steal focus. */}
+      <div className="mb-4 flex items-stretch gap-2">
+        <div className="flex-1 flex items-center gap-2 rounded-pill bg-paper text-ink ring-1 ring-ink/15 px-4 py-2.5 shadow-card focus-within:ring-2 focus-within:ring-coral transition">
+          <span aria-hidden className="text-ink-muted text-base">🔍</span>
+          <input
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            placeholder="Search products or recipes…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="flex-1 min-w-0 bg-transparent outline-none text-base text-ink placeholder:text-ink/50 py-0.5"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Clear search"
+              className="text-ink-muted hover:text-ink text-sm w-6 h-6 flex items-center justify-center rounded-full hover:bg-ink/5"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <Link
+          href="/kitchen/build"
+          className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-pill bg-paper text-ink ring-1 ring-ink/15 shadow-card hover:bg-coral hover:text-white hover:ring-coral transition px-4 text-sm font-semibold"
+          title="Build a recipe from a photo"
+          aria-label="Build a recipe from a photo"
+        >
+          <span aria-hidden className="text-base">📷</span>
+          <span className="hidden md:inline">Scan</span>
+        </Link>
+      </div>
+
+      {/* Tab toggle — secondary control, below search. */}
+      <div className="mb-5">
+        <div className="inline-flex items-center gap-1 rounded-pill bg-paper/15 ring-1 ring-paper/20 p-1 backdrop-blur-sm">
           <button
             type="button"
             onClick={() => setTab("mine")}
@@ -122,29 +161,14 @@ export function KitchenTabs({
             <span className="ml-1 text-[10px] opacity-70">({realCount})</span>
           </button>
         </div>
-        <div className="flex-1 flex items-center gap-2 rounded-pill bg-paper text-ink ring-1 ring-ink/15 px-3 py-1.5 shadow-card focus-within:ring-coral transition">
-          <span aria-hidden className="text-ink-muted text-sm">🔍</span>
-          <input
-            type="search"
-            inputMode="search"
-            enterKeyHint="search"
-            placeholder="Search both kitchens…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 min-w-0 bg-transparent outline-none text-base text-ink placeholder:text-ink/50 py-1"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              aria-label="Clear search"
-              className="text-ink-muted hover:text-ink text-sm w-6 h-6 flex items-center justify-center rounded-full hover:bg-ink/5"
-            >
-              ×
-            </button>
-          )}
-        </div>
       </div>
+
+      {/* Recently added — only on My Kitchen, only when not searching. Gives
+          the user a fast visual on what they last saved without scrolling
+          through the full grid. */}
+      {!searching && tab === "mine" && myItems.length > 0 && (
+        <RecentlyAddedRow items={myItems.slice(0, 8)} />
+      )}
 
       {searching ? (
         <SearchResults query={query} hits={hits} />
@@ -154,6 +178,45 @@ export function KitchenTabs({
         <RecipeLibrary recipes={recipes} ratings={ratings} />
       )}
     </div>
+  );
+}
+
+function RecentlyAddedRow({ items }: { items: KitchenItem[] }) {
+  return (
+    <section className="mb-6" aria-label="Recently added">
+      <div className="flex items-baseline justify-between mb-2 px-1">
+        <h2 className="text-xs uppercase tracking-[0.16em] font-bold text-paper/80">
+          Recently added
+        </h2>
+        <span className="text-xs text-paper/60">
+          {items.length} latest
+        </span>
+      </div>
+      <div className="-mx-4 md:-mx-0 px-4 md:px-0 overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+        <ul className="flex gap-3 pb-2">
+          {items.map((it) => (
+            <li key={it.id} className="snap-start shrink-0">
+              <Link
+                href={it.href}
+                className="block w-44 md:w-52 h-full rounded-soft bg-paper text-ink ring-1 ring-ink/10 shadow-card px-3 py-3 hover:brightness-105 active:scale-[0.98] transition"
+              >
+                <p className="text-[10px] uppercase tracking-[0.14em] font-bold text-coral truncate">
+                  {it.kicker}
+                </p>
+                <p className="mt-1 text-sm font-bold leading-snug line-clamp-2">
+                  {it.title}
+                </p>
+                {it.meal_type && (
+                  <p className="mt-2 text-[11px] text-ink/55 capitalize">
+                    {it.meal_type}
+                  </p>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 

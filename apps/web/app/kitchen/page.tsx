@@ -175,39 +175,18 @@ export default async function KitchenPage({
   return (
     <>
       <Nav />
-      <main className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-12">
-        <header className="mb-6 md:mb-8 flex items-start gap-3 md:gap-4 flex-wrap">
-          <RecentlyDeleted />
+      <main className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10">
+        <header className="mb-5 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-paper">The Kitchen</h1>
-            <p className="text-paper/80 mt-2 text-sm md:text-base">
-              {entries.length} saved · search both your kitchen and the Real Food Kitchen.
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-paper">
+              The Kitchen
+            </h1>
+            <p className="text-paper/70 mt-1 text-sm">
+              Find products to cook · search recipes
             </p>
           </div>
+          <RecentlyDeleted />
         </header>
-
-        {/* Kitchen toolbar — square buttons; new tools land here over time. */}
-        <section className="mb-8" aria-label="Kitchen tools">
-          <p className="text-xs uppercase tracking-[0.18em] text-paper/60 mb-3">Tools</p>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 sm:flex sm:flex-wrap">
-            <ToolTile
-              href="/kitchen/build"
-              icon="🛠"
-              label="Build a recipe"
-              hint="From a photo"
-            />
-          </div>
-        </section>
-
-        <Scorecard
-          swaps={swapCount}
-          saved={savedCount}
-          madeIt={madeItCount}
-          rated={ratingsCount}
-          level={level}
-          points={pointsInLevel}
-          pointsToNextLevel={POINTS_PER_LEVEL}
-        />
 
         <KitchenTabs
           myItems={items}
@@ -215,40 +194,30 @@ export default async function KitchenPage({
           ratings={recipeRatings}
           initialTab={initialTab}
         />
+
         {items.length === 0 && initialTab === "mine" && (
           <div className="card p-6 md:p-10 text-center mt-4">
             <p className="text-ink-soft mb-4">
-              Your kitchen is quiet. Let's fix that — find a swap and save it.
+              Your kitchen is quiet. Let&apos;s fix that — find a swap and save it.
             </p>
             <Link href="/home-v3" className="btn-primary">Find a swap</Link>
           </div>
         )}
+
+        {/* Compact scorecard strip at the bottom — gamification is interesting
+            but it's not the main job of this page. */}
+        <div className="mt-10 opacity-90">
+          <Scorecard
+            swaps={swapCount}
+            saved={savedCount}
+            madeIt={madeItCount}
+            rated={ratingsCount}
+            level={level}
+            points={pointsInLevel}
+            pointsToNextLevel={POINTS_PER_LEVEL}
+          />
+        </div>
       </main>
     </>
-  );
-}
-
-function ToolTile({
-  href,
-  icon,
-  label,
-  hint,
-}: {
-  href: string;
-  icon: string;
-  label: string;
-  hint?: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="card flex flex-col items-center justify-center text-center gap-1 p-4 w-full sm:w-32 h-32 hover:shadow-warm hover:-translate-y-0.5 transition-all"
-    >
-      <div className="text-4xl leading-none" aria-hidden>
-        {icon}
-      </div>
-      <div className="text-sm font-semibold text-ink mt-1 leading-tight">{label}</div>
-      {hint && <div className="text-xs text-ink-muted leading-tight">{hint}</div>}
-    </Link>
   );
 }
