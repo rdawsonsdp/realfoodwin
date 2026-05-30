@@ -15,6 +15,18 @@ export const metadata: Metadata = {
   description:
     "Type a junk food, get a real-food swap with a recipe, nutrition comparison, and ingredient analysis. Personalized by an AI coach who learns you.",
   metadataBase: new URL("https://realfoodwin.org"),
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Real Food Win",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/icon.svg" }],
+  },
   openGraph: {
     title: "Real Food Win",
     description: "Real food, family by family.",

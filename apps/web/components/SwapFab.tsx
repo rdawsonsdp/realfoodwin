@@ -1,29 +1,20 @@
 "use client";
 
-// SwapFab — the always-on swap entry. Floating camera button at the bottom-
-// right, sitting above the mobile tab bar (which the body reserves 5rem for
-// via pb-20). Tapping opens the SwapModal.
+// SwapFab — the always-on Scan entry. Big circular camera button at the
+// bottom-right of every authenticated screen, sitting above the mobile tab
+// bar (which the body reserves 5rem for via pb-20). Tapping opens the
+// camera-first SwapModal.
 //
-// Hidden on /home-v3 since that surface already shows a full-bleed swap
-// composer (SwapHero); a second floating button there is redundant.
+// Visible on /home-v3 too. The thumb-reachable FAB is the primary in-store
+// affordance — when the user pulls out their phone in an aisle, they should
+// see this button without having to look. The inline camera entry on
+// SwapHero stays as a secondary path inside the composer.
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
 import { SwapModal } from "./SwapModal";
 
-const HIDE_ON_PATHS = ["/home-v3"];
-
 export function SwapFab() {
-  const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
-
-  if (
-    HIDE_ON_PATHS.some(
-      (p) => pathname === p || pathname.startsWith(`${p}/`),
-    )
-  ) {
-    return null;
-  }
 
   return (
     <>
@@ -31,13 +22,16 @@ export function SwapFab() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Start a new swap"
-          className="fixed z-[80] bottom-24 md:bottom-8 right-4 md:right-6 inline-flex items-center gap-2 rounded-pill bg-coral text-white shadow-warm hover:brightness-95 active:scale-95 transition-all pl-4 pr-5 py-3 font-semibold"
+          aria-label="Scan a product"
+          title="Scan a product"
+          className="fixed z-[80] bottom-24 md:bottom-8 right-4 md:right-6 inline-flex flex-col items-center justify-center gap-0.5 rounded-full bg-coral text-white shadow-warm hover:brightness-95 active:scale-95 transition-all w-16 h-16 md:w-20 md:h-20 ring-4 ring-paper/30"
         >
-          <span aria-hidden className="text-xl leading-none">
+          <span aria-hidden className="text-2xl md:text-3xl leading-none">
             📷
           </span>
-          <span className="text-sm md:text-base">Swap</span>
+          <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider leading-none">
+            Scan
+          </span>
         </button>
       )}
       <SwapModal open={open} onClose={() => setOpen(false)} />

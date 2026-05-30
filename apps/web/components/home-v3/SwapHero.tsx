@@ -203,6 +203,24 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
           make today.
         </p>
       </div>
+
+      {/* Dominant in-store CTA. Web equivalent of "always-on camera" — one
+          big, obvious tap. Below it the SwapHero card still hosts the typed/
+          voice/scan composer for the secondary path. */}
+      <a
+        href="/scan"
+        className="mx-auto block w-full max-w-md mb-5 rounded-pill bg-coral text-white shadow-warm hover:brightness-95 active:scale-[0.98] transition-all px-5 py-5 md:py-6 text-center"
+        aria-label="Scan a product with your camera"
+      >
+        <span className="inline-flex items-center gap-3 text-lg md:text-xl font-extrabold">
+          <span aria-hidden className="text-2xl md:text-3xl">📷</span>
+          Scan a product
+        </span>
+        <span className="block mt-0.5 text-xs md:text-sm font-medium text-white/85">
+          Point the camera at a barcode or label
+        </span>
+      </a>
+
       <div
         className="relative mx-auto w-full max-w-md aspect-square
                    rounded-[2rem] bg-paper text-ink shadow-card
