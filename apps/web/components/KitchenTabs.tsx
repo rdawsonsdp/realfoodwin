@@ -130,15 +130,27 @@ export function KitchenTabs({
             </button>
           )}
         </div>
-        <Link
-          href="/kitchen/build"
-          className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-pill bg-paper text-ink ring-1 ring-ink/15 shadow-card hover:bg-coral hover:text-white hover:ring-coral transition px-4 text-sm font-semibold"
-          title="Build a recipe from a photo"
-          aria-label="Build a recipe from a photo"
-        >
-          <span aria-hidden className="text-base">📷</span>
-          <span className="hidden md:inline">Scan</span>
-        </Link>
+        {/* Photo-to-recipe affordance. Label is always visible because
+            "Scan" alone read ambiguous (barcode? OCR?); the explicit
+            "Recipe from photo" + a hover tooltip removes the guesswork. */}
+        <div className="relative group shrink-0 flex">
+          <Link
+            href="/kitchen/build"
+            className="inline-flex items-center justify-center gap-1.5 rounded-pill bg-paper text-ink ring-1 ring-ink/15 shadow-card hover:bg-coral hover:text-white hover:ring-coral transition px-4 text-sm font-semibold whitespace-nowrap"
+            title="Take a photo of a meal and turn it into a recipe"
+            aria-label="Build a recipe from a photo"
+          >
+            <span aria-hidden className="text-base">📷</span>
+            <span>Recipe from photo</span>
+          </Link>
+          <span
+            role="tooltip"
+            className="pointer-events-none hidden md:block absolute top-full right-0 mt-1.5 px-2.5 py-1.5 rounded-soft bg-ink text-paper text-[11px] leading-snug max-w-[16rem] whitespace-normal text-center shadow-card opacity-0 group-hover:opacity-100 transition-opacity z-20"
+          >
+            Snap a photo of a meal — AI turns it into a real-food recipe
+            you can cook.
+          </span>
+        </div>
       </div>
 
       {/* Tab toggle — secondary control, below search. */}
