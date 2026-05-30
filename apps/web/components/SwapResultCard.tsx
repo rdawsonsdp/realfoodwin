@@ -6,6 +6,7 @@ import { apiPost } from "@/lib/api";
 import { IterationRow } from "./IterationRow";
 import { RecipeActions } from "./RecipeActions";
 import { StarRating } from "./StarRating";
+import { MarkerBadges } from "./MarkerBadges";
 
 export interface SwapAlternate {
   title: string;
@@ -43,6 +44,8 @@ export interface SwapResult {
     }[];
     narrative: string;
     tuned_for_you_reasons: string[];
+    bad_markers?: string[];
+    good_markers?: string[];
     product_url?: string | null;
     brand_name?: string | null;
     product_image_url?: string | null;
@@ -163,6 +166,14 @@ export function SwapResultCard({
           <p className="text-sm text-ink-soft mb-2">
             Real-food product for <strong>{result.query}</strong>
           </p>
+          {currentOutput.bad_markers && currentOutput.bad_markers.length > 0 && (
+            <div className="mt-2 mb-2">
+              <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-coral mb-1.5">
+                In “{result.query}”
+              </p>
+              <MarkerBadges markers={currentOutput.bad_markers} variant="bad" />
+            </div>
+          )}
           <div className="flex flex-col md:flex-row md:items-center gap-6 mt-4">
             <a
               href={currentOutput.product_url ?? "#"}
@@ -195,6 +206,14 @@ export function SwapResultCard({
               </h2>
               {currentOutput.tagline && (
                 <p className="text-lg text-ink-soft mt-2">{currentOutput.tagline}</p>
+              )}
+              {currentOutput.good_markers && currentOutput.good_markers.length > 0 && (
+                <div className="mt-3">
+                  <MarkerBadges
+                    markers={currentOutput.good_markers}
+                    variant="good"
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -274,11 +293,27 @@ export function SwapResultCard({
         <p className="text-sm text-ink-soft mb-2">
           Real-food swap for <strong>{result.query}</strong>
         </p>
+        {currentOutput.bad_markers && currentOutput.bad_markers.length > 0 && (
+          <div className="mb-3">
+            <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-coral mb-1.5">
+              In “{result.query}”
+            </p>
+            <MarkerBadges markers={currentOutput.bad_markers} variant="bad" />
+          </div>
+        )}
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight leading-tight">
           {currentOutput.title}
         </h2>
         {currentOutput.tagline && (
           <p className="text-lg text-ink-soft mt-3">{currentOutput.tagline}</p>
+        )}
+        {currentOutput.good_markers && currentOutput.good_markers.length > 0 && (
+          <div className="mt-4">
+            <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-forest-700 mb-1.5">
+              In this swap
+            </p>
+            <MarkerBadges markers={currentOutput.good_markers} variant="good" />
+          </div>
         )}
         <div className="mt-5 flex items-center gap-2 flex-wrap">
           <span className="text-xs text-ink-muted">

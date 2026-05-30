@@ -302,6 +302,14 @@ function buildSwapOutputFromLibrary(
   recipe: MatchedRecipe | null,
   products: MatchedProduct[],
 ): SwapGenerator.SwapGeneratorOutput {
+  // Library content is hand-curated by the Real Food Win team, so these
+  // markers hold across the catalog. They're the floor — the LLM path emits a
+  // richer, item-specific set; library swaps get this trustworthy baseline.
+  const LIBRARY_DEFAULT_GOOD_MARKERS: SwapGenerator.GoodMarker[] = [
+    "whole_food",
+    "no_seed_oils",
+    "no_artificial_anything",
+  ];
   if (recipe) {
     const ingredients = Array.isArray(recipe.ingredients)
       ? (recipe.ingredients as Array<{
@@ -337,6 +345,8 @@ function buildSwapOutputFromLibrary(
         "Hand-picked from the Real Food Win recipe library",
         "Whole-food ingredients only — no seed oils, no ultra-processed shortcuts",
       ],
+      bad_markers: [],
+      good_markers: [...LIBRARY_DEFAULT_GOOD_MARKERS, "made_fresh" as const],
       alternates: productAlternates,
     };
   }
@@ -352,6 +362,8 @@ function buildSwapOutputFromLibrary(
       `From ${primary.brand_name}, a brand on the Real Food Win curated list`,
       "Whole-food ingredients only",
     ],
+    bad_markers: [],
+    good_markers: LIBRARY_DEFAULT_GOOD_MARKERS,
     ...(primary.product_url ? { product_url: primary.product_url } : {}),
     brand_name: primary.brand_name,
     ...(primary.image_url ? { product_image_url: primary.image_url } : {}),
