@@ -273,6 +273,7 @@ export async function POST(req: Request) {
           latency_judge_ms: null,
           latency_llm_ms: null,
           latency_web_ms: null,
+          latency_image_id_ms: null,
           latency_total_ms: 0,
           tokens_input: null,
           tokens_output: null,

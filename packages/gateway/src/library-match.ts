@@ -16,6 +16,10 @@ import { getServiceSupabase } from "./supabase";
 import { embed } from "./llm/voyage";
 import { callWithTool, type ToolDefinition } from "./llm/anthropic";
 
+// Cosine similarity threshold above which we trust pgvector's top candidate
+// outright and skip the Haiku judge. Tune here if precision/recall drifts.
+const BYPASS_COSINE_THRESHOLD = 0.85;
+
 export type SwapGoal = "recipe" | "product";
 
 export interface MatchedRecipe {
@@ -82,20 +86,18 @@ const JUDGE_TOOL: ToolDefinition = {
     properties: {
       recipe_id: {
         type: ["string", "null"],
-        description:
-          "ID of the recipe that best fits the query, or null if no recipe is a strong fit. Only set when 'recipe' is in goals.",
+        description: "Best-fit recipe ID, or null if none fit. Only when 'recipe' in goals.",
       },
       product_ids: {
         type: "array",
         items: { type: "string" },
         maxItems: 8,
-        description:
-          "IDs of brand_products that fit the query, best fit first. Include EVERY candidate that is a genuine match — the UI shows them as 'Other ideas' so the user can browse all real-food alternatives, not just one. Empty array if none fit. Only populate when 'product' is in goals.",
+        description: "Fitting product IDs, best first. [] if none. Only when 'product' in goals.",
       },
       reason: {
         type: "string",
         maxLength: 200,
-        description: "One sentence on why this is (or isn't) a fit. Plain language, no marketing copy.",
+        description: "One sentence on why this is (or isn't) a fit.",
       },
     },
   },
@@ -331,45 +333,93 @@ export async function matchLibrary(
     };
   }
 
-  // 4. Haiku judge.
-  const judgeStart = Date.now();
-  const userPrompt = [
-    `USER QUERY: "${input.query.trim()}"`,
-    `GOALS: ${input.goals.length ? input.goals.join(", ") : "either recipe or product"}`,
-    "",
-    buildShortlistText(recipeCandidates, productCandidates),
-    "",
-    'Pick the best library matches. If nothing is a genuine fit, set recipe_id to null and product_ids to []. Do not stretch.',
-  ].join("\n");
+  // 4. Haiku judge — but first, try the high-cosine bypass.
+  //
+  // The Haiku judge step costs 2.4-4.6s p50 from agent_traces and dominates
+  // user-facing latency on every live library hit. When pgvector already
+  // returns a candidate with cosine > BYPASS_COSINE_THRESHOLD, the embeddings
+  // alone are confident enough — calling Haiku is just paying ~3s for a
+  // rubber-stamp.
+  const topRecipeSim = recipeCandidates[0]?.similarity ?? 0;
+  const topProductSim = productCandidates[0]?.similarity ?? 0;
+  const recipeQualifies = wantRecipe && topRecipeSim > BYPASS_COSINE_THRESHOLD;
+  const productQualifies = wantProduct && topProductSim > BYPASS_COSINE_THRESHOLD;
 
-  const judgeResult = await callWithTool({
-    tier: "haiku",
-    system: JUDGE_SYSTEM,
-    user: userPrompt,
-    tool: JUDGE_TOOL,
-    maxTokens: 400,
-    temperature: 0.0,
-  });
+  let pickedRecipeId: string | null = null;
+  let pickedProductIds: string[] = [];
+  let judgeMs: number;
+  let judgeReason: string;
 
-  const judgement = judgeResult.toolInput as {
-    recipe_id: string | null;
-    product_ids: string[];
-    reason: string;
-  };
-  const judgeMs = Date.now() - judgeStart;
+  if (recipeQualifies || productQualifies) {
+    // Bypass path.
+    if (wantRecipe && wantProduct) {
+      // Recipe + products: take the recipe if it qualifies, plus up to 4
+      // products that also clear the threshold.
+      if (recipeQualifies) {
+        pickedRecipeId = recipeCandidates[0]!.id;
+      }
+      pickedProductIds = productCandidates
+        .filter((p) => p.similarity > BYPASS_COSINE_THRESHOLD)
+        .slice(0, 4)
+        .map((p) => p.id);
+    } else if (wantProduct) {
+      // Products only: take ALL that clear the threshold (up to 8), ordered
+      // by similarity desc (pgvector already returns them that way).
+      pickedProductIds = productCandidates
+        .filter((p) => p.similarity > BYPASS_COSINE_THRESHOLD)
+        .slice(0, 8)
+        .map((p) => p.id);
+    } else if (wantRecipe) {
+      // Recipe only.
+      pickedRecipeId = recipeCandidates[0]!.id;
+    }
+    const topSim = Math.max(
+      recipeQualifies ? topRecipeSim : 0,
+      productQualifies ? topProductSim : 0,
+    );
+    judgeReason = `bypassed: top cosine ${topSim.toFixed(3)} was a clear winner`;
+    judgeMs = 0;
+  } else {
+    const judgeStart = Date.now();
+    const userPrompt = [
+      `USER QUERY: "${input.query.trim()}"`,
+      `GOALS: ${input.goals.length ? input.goals.join(", ") : "either recipe or product"}`,
+      "",
+      buildShortlistText(recipeCandidates, productCandidates),
+      "",
+      'Pick the best library matches. If nothing is a genuine fit, set recipe_id to null and product_ids to []. Do not stretch.',
+    ].join("\n");
 
-  // Defensive: only accept IDs that were in the shortlist (model could
-  // hallucinate). And only honor the recipe / product pick if its goal
-  // was actually requested.
-  const recipeIds = new Set(recipeCandidates.map((r) => r.id));
-  const productIds = new Set(productCandidates.map((p) => p.id));
-  const pickedRecipeId =
-    wantRecipe && judgement.recipe_id && recipeIds.has(judgement.recipe_id)
-      ? judgement.recipe_id
-      : null;
-  const pickedProductIds = wantProduct
-    ? (judgement.product_ids ?? []).filter((id) => productIds.has(id)).slice(0, 8)
-    : [];
+    const judgeResult = await callWithTool({
+      tier: "haiku",
+      system: JUDGE_SYSTEM,
+      user: userPrompt,
+      tool: JUDGE_TOOL,
+      maxTokens: 150,
+      temperature: 0.0,
+    });
+
+    const judgement = judgeResult.toolInput as {
+      recipe_id: string | null;
+      product_ids: string[];
+      reason: string;
+    };
+    judgeMs = Date.now() - judgeStart;
+
+    // Defensive: only accept IDs that were in the shortlist (model could
+    // hallucinate). And only honor the recipe / product pick if its goal
+    // was actually requested.
+    const recipeIds = new Set(recipeCandidates.map((r) => r.id));
+    const productIds = new Set(productCandidates.map((p) => p.id));
+    pickedRecipeId =
+      wantRecipe && judgement.recipe_id && recipeIds.has(judgement.recipe_id)
+        ? judgement.recipe_id
+        : null;
+    pickedProductIds = wantProduct
+      ? (judgement.product_ids ?? []).filter((id) => productIds.has(id)).slice(0, 8)
+      : [];
+    judgeReason = judgement.reason ?? "";
+  }
 
   // 5. Fetch full bodies.
   const [recipe, products] = await Promise.all([
@@ -404,7 +454,7 @@ export async function matchLibrary(
     source: "live",
     durationMs: Date.now() - start,
     timings: { cache_ms: cacheMs, embed_ms: embedMs, pgvector_ms: pgvectorMs, judge_ms: judgeMs },
-    judgeReason: judgement.reason ?? null,
+    judgeReason: judgeReason || null,
     topSimilarity,
   };
 }

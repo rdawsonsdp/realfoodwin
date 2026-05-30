@@ -10,7 +10,8 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "clean": "turbo run clean && rm -rf node_modules",
-    "seed:personas": "tsx scripts/seed-personas.ts"
+    "seed:personas": "tsx scripts/seed-personas.ts",
+    "seed:swap-cache": "tsx scripts/prewarm-swap-cache.ts"
   },
   "devDependencies": {
     "dotenv": "^16.4.5",

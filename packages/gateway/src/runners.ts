@@ -258,6 +258,7 @@ export interface SwapTrace {
     | "library_miss_llm_fallback"
     | "library_miss_web_fallback"
     | "image_route"
+    | "image_identified_library_hit"
     | "product_only_no_match";
   classification_confidence: number | null;
   source_chosen: "cache" | "library" | "llm" | "web" | "not_found";
@@ -273,6 +274,10 @@ export interface SwapTrace {
   latency_judge_ms: number | null;
   latency_llm_ms: number | null;
   latency_web_ms: number | null;
+  // Haiku-vision identification leg of the two-stage image flow. Null when
+  // the request didn't include a photo. Tracked separately so the trace can
+  // show both the cheap ID hop and the (optional) library/LLM follow-up.
+  latency_image_id_ms: number | null;
   latency_total_ms: number;
   tokens_input: number | null;
   tokens_output: number | null;
@@ -477,6 +482,7 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
         latency_judge_ms: null,
         latency_llm_ms: null,
         latency_web_ms: null,
+        latency_image_id_ms: null,
         latency_total_ms: Date.now() - overallStart,
         tokens_input: null,
         tokens_output: null,
@@ -497,106 +503,186 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
     }
   }
 
-  // Library-first matcher. Photo swaps need vision so they always hit Sonnet,
-  // but every text query gets a sub-2s curated lookup before we fall through
-  // to a fresh LLM generation. When the user explicitly asked for a PRODUCT
-  // and the brand catalog has no match, we surface "no products found" rather
-  // than letting Claude invent SKUs that aren't in our directory.
-  if (!input.image && input.request.trim().length >= 2) {
+  // Helper: run the curated library matcher against a query, and on a hit
+  // build/persist a SwapGenerator-shaped output + SwapTrace. Returns null on
+  // miss so the caller can fall through to Sonnet. Used by BOTH the text
+  // path and the new image-identified path (Stage B of the two-stage flow).
+  async function tryLibraryHit(opts: {
+    query: string;
+    classification: SwapTrace["classification_reasoning"];
+    latencyImageIdMs: number | null;
+  }) {
     const goals: SwapGoal[] = (input.preferences?.goals as SwapGoal[] | undefined) ?? [];
     const productOnly = goals.length === 1 && goals[0] === "product";
     const libraryStart = Date.now();
-    try {
-      const match = await matchLibrary({ query: input.request, goals });
-      if (match.recipe || match.products.length > 0) {
-        const output = buildSwapOutputFromLibrary(match.recipe, match.products);
-        let saved = null;
-        if (input.userId) {
-          saved = await cacheSwap({
-            user_id: input.userId,
-            product_id: input.productId ?? null,
-            recipe: output.recipe,
-            nutrition: output.nutrition ?? {},
-            narrative: output.narrative,
-            output,
-            swap_target: input.request,
-          });
-        }
-        const debug: SwapDebug = {
-          source: "library",
-          model: null,
-          prompt_version: null,
-          request: input.request,
-          merged_preferences: input.preferences ?? null,
-          avoid_titles: input.avoidTitles ?? null,
-          feedback: input.feedback ?? null,
-          user_context: null,
-          user_prompt: null,
-        };
-        const recommendations: SwapTrace["recommendations"] = [
-          { id: match.recipe?.id ?? null, title: output.title, kind: "primary" as const },
-          ...match.products.slice(0, 8).map((p, i) => ({
-            id: p.id,
-            title: `${p.brand_name}: ${p.name}`,
-            kind: i === 0 && !match.recipe ? ("primary" as const) : ("alternate" as const),
-          })),
-        ].filter((r, i, arr) => arr.findIndex((x) => x.title === r.title) === i);
-        const trace: SwapTrace = {
-          request_id: requestId,
-          classification_reasoning: "library_hit",
-          classification_confidence: match.topSimilarity,
-          source_chosen: "library",
-          source_reasoning: match.judgeReason,
-          db_match_found: true,
-          library_recipe_id: match.recipe?.id ?? null,
-          library_product_ids: match.products.map((p) => p.id),
-          category_implicit:
-            match.recipe?.meal_type ?? match.products[0]?.brand_name ?? null,
-          recommendations,
-          latency_cache_ms: match.timings.cache_ms,
-          latency_embed_ms: match.timings.embed_ms,
-          latency_pgvector_ms: match.timings.pgvector_ms,
-          latency_judge_ms: match.timings.judge_ms,
-          latency_llm_ms: null,
-          latency_web_ms: null,
-          latency_total_ms: Date.now() - overallStart,
-          tokens_input: null,
-          tokens_output: null,
-          cost_usd: null,
-          web_searches: [],
-          web_urls_fetched: [],
-          library_written: false,
-          library_written_product_id: null,
-          merged_preferences: input.preferences ?? null,
-          avoid_titles: input.avoidTitles ?? null,
-          feedback: input.feedback ?? null,
-          user_context: null,
-          user_prompt: null,
-          model: null,
-          prompt_version: null,
-        };
-        return {
-          cached: false,
-          swap: saved,
+    const match = await matchLibrary({ query: opts.query, goals });
+    if (match.recipe || match.products.length > 0) {
+      const output = buildSwapOutputFromLibrary(match.recipe, match.products);
+      let saved = null;
+      if (input.userId) {
+        saved = await cacheSwap({
+          user_id: input.userId,
+          product_id: input.productId ?? null,
+          recipe: output.recipe,
+          nutrition: output.nutrition ?? {},
+          narrative: output.narrative,
           output,
-          latencyMs: Date.now() - libraryStart,
-          source: "library" as const,
-          libraryHit: {
-            recipeId: match.recipe?.id ?? null,
-            productIds: match.products.map((p) => p.id),
-            fromCache: match.cached,
-          },
-          debug,
-          trace,
-        };
+          swap_target: input.request,
+        });
       }
-      // Only surface the explicit "no products found" message when the
-      // matcher actually had candidates to consider and Haiku rejected them
-      // all. If the library is empty (no embeddings yet, fresh deploy),
-      // fall through to the existing Sonnet path so the app stays useful.
-      if (productOnly && match.hadCandidates) {
-        throw new NoLibraryProductsError(input.request);
+      const debug: SwapDebug = {
+        source: "library",
+        model: null,
+        prompt_version: null,
+        request: input.request,
+        merged_preferences: input.preferences ?? null,
+        avoid_titles: input.avoidTitles ?? null,
+        feedback: input.feedback ?? null,
+        user_context: null,
+        user_prompt: null,
+      };
+      const recommendations: SwapTrace["recommendations"] = [
+        { id: match.recipe?.id ?? null, title: output.title, kind: "primary" as const },
+        ...match.products.slice(0, 8).map((p, i) => ({
+          id: p.id,
+          title: `${p.brand_name}: ${p.name}`,
+          kind: i === 0 && !match.recipe ? ("primary" as const) : ("alternate" as const),
+        })),
+      ].filter((r, i, arr) => arr.findIndex((x) => x.title === r.title) === i);
+      const trace: SwapTrace = {
+        request_id: requestId,
+        classification_reasoning: opts.classification,
+        classification_confidence: match.topSimilarity,
+        source_chosen: "library",
+        source_reasoning: match.judgeReason,
+        db_match_found: true,
+        library_recipe_id: match.recipe?.id ?? null,
+        library_product_ids: match.products.map((p) => p.id),
+        category_implicit:
+          match.recipe?.meal_type ?? match.products[0]?.brand_name ?? null,
+        recommendations,
+        latency_cache_ms: match.timings.cache_ms,
+        latency_embed_ms: match.timings.embed_ms,
+        latency_pgvector_ms: match.timings.pgvector_ms,
+        latency_judge_ms: match.timings.judge_ms,
+        latency_llm_ms: null,
+        latency_web_ms: null,
+        latency_image_id_ms: opts.latencyImageIdMs,
+        latency_total_ms: Date.now() - overallStart,
+        tokens_input: null,
+        tokens_output: null,
+        cost_usd: null,
+        web_searches: [],
+        web_urls_fetched: [],
+        library_written: false,
+        library_written_product_id: null,
+        merged_preferences: input.preferences ?? null,
+        avoid_titles: input.avoidTitles ?? null,
+        feedback: input.feedback ?? null,
+        user_context: null,
+        user_prompt: null,
+        model: null,
+        prompt_version: null,
+      };
+      return {
+        cached: false,
+        swap: saved,
+        output,
+        latencyMs: Date.now() - libraryStart,
+        source: "library" as const,
+        libraryHit: {
+          recipeId: match.recipe?.id ?? null,
+          productIds: match.products.map((p) => p.id),
+          fromCache: match.cached,
+        },
+        debug,
+        trace,
+      };
+    }
+    // Only surface the explicit "no products found" message when the matcher
+    // actually had candidates to consider and Haiku rejected them all. If the
+    // library is empty (no embeddings yet, fresh deploy), let the caller fall
+    // through to the existing Sonnet path so the app stays useful.
+    if (productOnly && match.hadCandidates) {
+      throw new NoLibraryProductsError(input.request);
+    }
+    return null;
+  }
+
+  // Stage A of the photo flow: tiny Haiku-vision call to identify the product
+  // in the photo. We stash the result so Stage B can run the regular library
+  // matcher on the identified name. On library hit we return ~2-4s instead of
+  // the ~32s/$0.045 Sonnet-with-vision path.
+  let photoIdentifiedQuery: string | null = null;
+  let photoIdLatencyMs: number | null = null;
+  if (input.image) {
+    const idStart = Date.now();
+    try {
+      const idResult = await callWithTool({
+        tier: "haiku",
+        system:
+          "You identify food products from photos. Respond ONLY via the identify_product tool.",
+        user:
+          "Identify the food/product in this photo. If the photo shows packaging, prefer the brand + exact product name from the label.",
+        tool: SwapGenerator.PHOTO_ID_TOOL,
+        image: input.image,
+        maxTokens: 200,
+        heliconeUserId: input.userId ?? "anonymous",
+      });
+      photoIdLatencyMs = Date.now() - idStart;
+      const id = idResult.toolInput as {
+        product_name?: string;
+        brand?: string | null;
+        confidence?: string;
+      };
+      if (id.product_name && id.product_name.trim().length >= 2) {
+        const name = id.product_name.trim();
+        photoIdentifiedQuery =
+          id.brand && !name.toLowerCase().includes(id.brand.toLowerCase())
+            ? `${id.brand} ${name}`.trim()
+            : name;
       }
+    } catch (err) {
+      photoIdLatencyMs = Date.now() - idStart;
+      // Identification failure is non-fatal: fall through to the existing
+      // Sonnet-with-image path so the user still gets a swap.
+      // eslint-disable-next-line no-console
+      console.warn("[runSwapGenerator] Haiku photo-id failed, falling through:", err);
+    }
+
+    if (photoIdentifiedQuery) {
+      try {
+        const hit = await tryLibraryHit({
+          query: photoIdentifiedQuery,
+          classification: "image_identified_library_hit",
+          latencyImageIdMs: photoIdLatencyMs,
+        });
+        if (hit) return hit;
+      } catch (err) {
+        if (err instanceof NoLibraryProductsError) throw err;
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[runSwapGenerator] image-identified library match failed, falling through:",
+          err,
+        );
+      }
+    }
+  }
+
+  // Library-first matcher (text path). Photo swaps that reach here have
+  // already failed Stage A/B above. Every text query gets a sub-2s curated
+  // lookup before falling through to a fresh LLM generation. When the user
+  // explicitly asked for a PRODUCT and the brand catalog has no match, we
+  // surface "no products found" rather than letting Claude invent SKUs that
+  // aren't in our directory.
+  if (!input.image && input.request.trim().length >= 2) {
+    try {
+      const hit = await tryLibraryHit({
+        query: input.request,
+        classification: "library_hit",
+        latencyImageIdMs: null,
+      });
+      if (hit) return hit;
     } catch (err) {
       if (err instanceof NoLibraryProductsError) throw err;
       // Any other matcher failure (missing embeddings, Voyage down, etc.) is
@@ -631,10 +717,16 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
   let model = "";
 
   // Image-route uses the plain tool call (vision identifies the food, no
-  // search needed). Text-only fallback gets the web_search tool: the model
-  // decides what to search for, reads result pages, and writes a swap that
-  // can include a REAL brand product URL.
-  const useWebSearch = !input.image;
+  // search needed). Text-only fallback gets the web_search tool — BUT ONLY
+  // when the user explicitly asked for a product to buy. The
+  // buildWebSearchPromptSuffix system prompt forbids web_search for recipe
+  // queries; sending the tool anyway just registered Sonnet for a 47s no-op
+  // (real trace: "Grilled cheese" library miss burned 6k input + 2.8k output
+  // tokens and never called web_search once). Gate it here so we don't pay
+  // for a tool the prompt won't let the model use.
+  const goals = (input.preferences?.goals ?? []) as string[];
+  const userAskedForProduct = goals.includes("product");
+  const useWebSearch = !input.image && userAskedForProduct;
   let webSearches: string[] = [];
   let webUrlsFetched: string[] = [];
   let toolInput: unknown = null;
@@ -767,6 +859,10 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
       latency_judge_ms: null,
       latency_llm_ms: llmMs,
       latency_web_ms: useWebSearch ? llmMs : null,
+      // Carries the Haiku-ID hop's latency through when this Sonnet call is
+      // the fallback leg of the two-stage image flow (library missed on the
+      // identified name). Null on the pure text path.
+      latency_image_id_ms: photoIdLatencyMs,
       latency_total_ms: Date.now() - overallStart,
       tokens_input: usage.input_tokens,
       tokens_output: usage.output_tokens,

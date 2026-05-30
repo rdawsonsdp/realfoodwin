@@ -102,6 +102,30 @@ Emit 2-5 bad markers for a typical ultra-processed original. Emit 3-6 good marke
 
 Output ONLY via the generate_swap tool.`;
 
+// Tiny vision-identification tool used as Stage A of the two-stage photo
+// swap flow. Haiku looks at the user's photo and emits just a product name
+// (and optional brand + confidence). The product name is then fed into the
+// regular library matcher; only on a library miss does Sonnet run on the
+// image itself. This collapses ~32s/$0.045 photo swaps into ~2-4s when the
+// library has the item.
+export const PHOTO_ID_TOOL = {
+  name: "identify_product",
+  description: "Identify the food product shown in the attached photo.",
+  input_schema: {
+    type: "object",
+    properties: {
+      product_name: {
+        type: "string",
+        description:
+          "Brand + product name, e.g. 'Doritos Cool Ranch' or 'Snickers'.",
+      },
+      brand: { type: ["string", "null"] },
+      confidence: { type: "string", enum: ["high", "medium", "low"] },
+    },
+    required: ["product_name", "confidence"],
+  },
+} as const;
+
 export const TOOL = {
   name: "generate_swap",
   description:
