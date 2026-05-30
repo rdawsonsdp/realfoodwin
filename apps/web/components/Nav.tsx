@@ -72,11 +72,11 @@ export async function Nav() {
             {userLabel && (
               <Link
                 href="/settings"
-                className="ml-2 inline-flex items-center gap-1.5 text-sm font-semibold text-ink/80 hover:text-ink px-2 py-1.5 rounded-pill hover:bg-ink/5 max-w-[14ch] truncate"
+                className="ml-2 inline-flex items-center gap-1.5 text-sm font-semibold text-ink/80 hover:text-ink px-2 py-1.5 rounded-pill hover:bg-ink/5 whitespace-nowrap"
                 title={`Signed in as ${userLabel}`}
               >
                 <span aria-hidden>👤</span>
-                <span className="truncate">{userLabel}</span>
+                <span>{userLabel}</span>
               </Link>
             )}
             {!user && (
@@ -95,7 +95,7 @@ export async function Nav() {
           <div className="md:hidden flex items-center gap-1">
             {userLabel && (
               <span
-                className="text-xs font-semibold text-ink/70 truncate max-w-[8ch]"
+                className="text-xs font-semibold text-ink/70 whitespace-nowrap"
                 title={`Signed in as ${userLabel}`}
               >
                 {userLabel}
