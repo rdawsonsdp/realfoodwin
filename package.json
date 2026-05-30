@@ -14,10 +14,12 @@
     "seed:swap-cache": "tsx scripts/prewarm-swap-cache.ts"
   },
   "devDependencies": {
+    "@types/ws": "^8.18.1",
     "dotenv": "^16.4.5",
     "tsx": "^4.19.0",
     "turbo": "^2.1.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "ws": "^8.21.0"
   },
   "dependencies": {
     "@realfoodwin/gateway": "workspace:*",

@@ -19,6 +19,14 @@ import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
 loadEnv({ path: "apps/web/.env.local" });
 
+// Supabase's realtime-js requires a WebSocket implementation; Node < 22 has
+// none natively. We don't use realtime here, but creating the client still
+// instantiates it. Polyfill globalThis.WebSocket with the `ws` package so the
+// client constructs without throwing on every call.
+import WebSocket from "ws";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).WebSocket = WebSocket;
+
 import { matchLibrary } from "@realfoodwin/gateway";
 
 // ---------------------------------------------------------------------------
