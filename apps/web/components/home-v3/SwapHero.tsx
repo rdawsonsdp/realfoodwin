@@ -210,11 +210,11 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
       >
         <SwapLoader show={loading} />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
-          <div className="mb-8 max-w-[26ch]">
+          <div className="mb-8 max-w-[26ch] text-center">
             <p className="text-balance text-[20px] md:text-[26px] leading-tight font-extrabold tracking-[-0.02em] text-ink">
               &ldquo;{quote.text}&rdquo;
             </p>
-            <p className="mt-2 text-xs md:text-sm font-medium text-ink/55">
+            <p className="mt-3 text-sm md:text-base font-bold text-ink/70 text-center">
               — {quote.author}
             </p>
           </div>
