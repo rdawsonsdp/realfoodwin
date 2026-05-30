@@ -12,6 +12,20 @@ export async function Nav() {
   } = await supabase.auth.getUser();
   const isAdmin = isAdminRequest(user?.email ?? null);
 
+  // Pick the friendliest label we have for the logged-in user. Prefer the
+  // display_name they set; fall back to the email local-part. Shown in the
+  // header so it's obvious which account is signed in.
+  let userLabel: string | null = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("display_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    const displayName = (profile as { display_name?: string | null } | null)?.display_name?.trim();
+    userLabel = displayName || user.email?.split("@")[0] || null;
+  }
+
   // Single source of truth for both the desktop inline row and the mobile
   // drawer — keeps the two presentations in sync without duplicating logic.
   const links: NavLink[] = [
@@ -55,6 +69,16 @@ export async function Nav() {
                 {l.label}
               </Link>
             ))}
+            {userLabel && (
+              <Link
+                href="/settings"
+                className="ml-2 inline-flex items-center gap-1.5 text-sm font-semibold text-ink/80 hover:text-ink px-2 py-1.5 rounded-pill hover:bg-ink/5 max-w-[14ch] truncate"
+                title={`Signed in as ${userLabel}`}
+              >
+                <span aria-hidden>👤</span>
+                <span className="truncate">{userLabel}</span>
+              </Link>
+            )}
             {!user && (
               <Link href="/sign-in" className="btn-secondary ml-2 py-2">
                 Sign in
@@ -69,6 +93,14 @@ export async function Nav() {
               sits in the header (not in the drawer) so the modal pops over
               everything without the drawer being in the way. */}
           <div className="md:hidden flex items-center gap-1">
+            {userLabel && (
+              <span
+                className="text-xs font-semibold text-ink/70 truncate max-w-[8ch]"
+                title={`Signed in as ${userLabel}`}
+              >
+                {userLabel}
+              </span>
+            )}
             <TestLoginButton />
             {!user && (
               <Link
