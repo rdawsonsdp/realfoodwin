@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
 import { VoiceButton } from "./VoiceButton";
 import { BarcodeButton } from "./BarcodeButton";
+import { SwapResultCard, type SwapResult } from "./SwapResultCard";
 
 interface Props {
   open: boolean;
@@ -34,6 +35,7 @@ export function SwapModal({ open, onClose }: Props) {
   const [image, setImage] = useState<PickedImage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<SwapResult | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const libraryInputRef = useRef<HTMLInputElement | null>(null);
   const textRef = useRef<HTMLInputElement | null>(null);
@@ -59,6 +61,7 @@ export function SwapModal({ open, onClose }: Props) {
       setImage(null);
       setError(null);
       setLoading(false);
+      setResult(null);
     }
   }, [open]);
 
@@ -109,21 +112,35 @@ export function SwapModal({ open, onClose }: Props) {
         cache: "no-store",
       });
       const json = (await res.json().catch(() => null)) as {
-        data?: { swap?: { id: string } | null };
+        data?: {
+          swap?: { id: string } | null;
+          output?: SwapResult["output"] | null;
+          latency_ms?: number | null;
+          cached?: boolean;
+        };
         error?: { message?: string; code?: string };
       } | null;
       if (!res.ok) {
         throw new Error(json?.error?.message ?? `Request failed (${res.status})`);
       }
-      const swapId = json?.data?.swap?.id;
-      if (swapId) {
+      const data = json?.data;
+      if (data?.output) {
+        // Show the swap as an inline overlay on this same page — no
+        // navigation. The user can dismiss and stay in context.
+        setResult({
+          query: q.trim(),
+          output: data.output,
+          latencyMs: data.latency_ms ?? null,
+          cached: data.cached ?? false,
+          swapId: data.swap?.id ?? null,
+        });
+      } else if (data?.swap?.id) {
+        // Cached or legacy path with no inline output — fall back to the
+        // dedicated swap page rather than rendering nothing.
         onClose();
-        router.push(`/swap/${swapId}`);
+        router.push(`/swap/${data.swap.id}`);
       } else {
-        // Some flows (legacy product hits) don't return a swap id — fall back to
-        // routing home with the query so the SwapHero there can render results.
-        onClose();
-        router.push(`/?q=${encodeURIComponent(q.trim())}`);
+        setError("Got an empty response from the swap agent. Try again?");
       }
     } catch (err) {
       const aborted =
@@ -153,12 +170,12 @@ export function SwapModal({ open, onClose }: Props) {
       aria-label="Start a swap"
     >
       <div
-        className="relative w-full max-w-lg bg-paper text-ink rounded-t-soft md:rounded-soft shadow-warm overflow-hidden animate-fade-up"
+        className={`relative w-full ${result ? "max-w-3xl max-h-[90dvh] overflow-y-auto" : "max-w-lg overflow-hidden"} bg-paper text-ink rounded-t-soft md:rounded-soft shadow-warm animate-fade-up`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-3 border-b border-ink/10">
+        <div className="sticky top-0 z-20 flex items-center justify-between bg-paper/95 backdrop-blur-sm px-5 py-3 border-b border-ink/10">
           <p className="text-sm uppercase tracking-[0.16em] font-bold text-forest-700">
-            Start a swap
+            {result ? "Your swap" : "Start a swap"}
           </p>
           <button
             type="button"
@@ -170,6 +187,11 @@ export function SwapModal({ open, onClose }: Props) {
           </button>
         </div>
 
+        {result ? (
+          <div className="p-4 md:p-6">
+            <SwapResultCard result={result} isLoggedIn={true} />
+          </div>
+        ) : (
         <div className="p-5 md:p-6 space-y-4">
           {/* Primary camera CTA — most common path, biggest target. */}
           <button
@@ -296,6 +318,7 @@ export function SwapModal({ open, onClose }: Props) {
             <p className="text-sm text-coral">{error}</p>
           )}
         </div>
+        )}
 
         {/* Hidden inputs that the buttons trigger */}
         <input

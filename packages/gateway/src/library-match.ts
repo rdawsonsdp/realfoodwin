@@ -20,6 +20,16 @@ import { callWithTool, type ToolDefinition } from "./llm/anthropic";
 // outright and skip the Haiku judge. Tune here if precision/recall drifts.
 const BYPASS_COSINE_THRESHOLD = 0.85;
 
+// Cosine similarity FLOOR. If even the best pgvector candidate is below this,
+// the library has nothing genuinely relevant; we'd rather return "no match"
+// than let the Haiku judge stretch to pick a ranch-dressing-shaped yogurt.
+// Real-world evidence: traces show Haiku has picked products at cosines like
+// 0.34 ("Sourmilk Yogurt" for "ranch dressing"), 0.39 ("Trail Mix" for some
+// snack), 0.43 ("Apple Cinnamon Chips" for "Crunch Pack sweet apple"). All
+// of these are stretches the user reads as wrong. Below the floor, fall
+// through to the LLM (or no-match) instead.
+const MIN_MATCH_COSINE = 0.55;
+
 export type SwapGoal = "recipe" | "product";
 
 export interface MatchedRecipe {
@@ -330,6 +340,31 @@ export async function matchLibrary(
       timings: { cache_ms: cacheMs, embed_ms: embedMs, pgvector_ms: pgvectorMs, judge_ms: null },
       judgeReason: null,
       topSimilarity: null,
+    };
+  }
+
+  // Floor check: if even the best candidate is well below the relevance
+  // threshold, refuse to pick — Haiku will just stretch and pick the
+  // least-bad item, which the user reads as wrong. Returning "no match"
+  // here lets the upstream runner fall through to Sonnet (which writes a
+  // fresh swap from scratch) or surface a clean "no curated match" state.
+  // Treat this as "hadCandidates: false" because nothing was relevant —
+  // not the embedding-missing case, but functionally the same outcome.
+  const bestSimilarity = Math.max(
+    recipeCandidates[0]?.similarity ?? 0,
+    productCandidates[0]?.similarity ?? 0,
+  );
+  if (bestSimilarity < MIN_MATCH_COSINE) {
+    return {
+      recipe: null,
+      products: [],
+      hadCandidates: false,
+      cached: false,
+      source: "live",
+      durationMs: Date.now() - start,
+      timings: { cache_ms: cacheMs, embed_ms: embedMs, pgvector_ms: pgvectorMs, judge_ms: null },
+      judgeReason: `best cosine ${bestSimilarity.toFixed(3)} below floor ${MIN_MATCH_COSINE}`,
+      topSimilarity: bestSimilarity,
     };
   }
 
