@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { VoiceButton } from "@/components/VoiceButton";
 import { ScanButton } from "@/components/home-v3/ScanButton";
+import { SwapModal } from "@/components/SwapModal";
 import { SwapResultCard, type SwapResult } from "@/components/SwapResultCard";
 import {
   SwapPreferences,
@@ -45,6 +46,7 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
   const [lastDebug, setLastDebug] = useState<AgentDebug | null>(null);
   const [lastTrace, setLastTrace] = useState<AgentTrace | null>(null);
   const [noMatchMessage, setNoMatchMessage] = useState<string | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefs, setPrefs] = useState<SwapPrefsValue>(EMPTY_PREFS);
 
@@ -205,10 +207,12 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
       </div>
 
       {/* Dominant in-store CTA. Web equivalent of "always-on camera" — one
-          big, obvious tap. Below it the SwapHero card still hosts the typed/
-          voice/scan composer for the secondary path. */}
-      <a
-        href="/scan"
+          tap pops the camera modal directly (no intermediate page). Below
+          it the SwapHero card still hosts the typed/voice/scan composer
+          for the secondary path. */}
+      <button
+        type="button"
+        onClick={() => setScanOpen(true)}
         className="mx-auto block w-full max-w-md mb-5 rounded-pill bg-coral text-white shadow-warm hover:brightness-95 active:scale-[0.98] transition-all px-5 py-5 md:py-6 text-center"
         aria-label="Scan a product with your camera"
       >
@@ -219,7 +223,8 @@ export function SwapHero({ quote, themeId, hasCustomBg }: Props) {
         <span className="block mt-0.5 text-xs md:text-sm font-medium text-white/85">
           Point the camera at a barcode or label
         </span>
-      </a>
+      </button>
+      <SwapModal open={scanOpen} onClose={() => setScanOpen(false)} />
 
       <div
         className="relative mx-auto w-full max-w-md aspect-square
