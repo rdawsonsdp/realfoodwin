@@ -5,16 +5,28 @@
 // bar (which the body reserves 5rem for via pb-20). Tapping opens the
 // camera-first SwapModal.
 //
-// Visible on /home-v3 too. The thumb-reachable FAB is the primary in-store
-// affordance — when the user pulls out their phone in an aisle, they should
-// see this button without having to look. The inline camera entry on
-// SwapHero stays as a secondary path inside the composer.
+// Hidden on routes that already render a giant inline Scan CTA (/home-v3,
+// the anon landing /, and /scan itself), since a second floating button
+// there is redundant. Visible everywhere else — Kitchen, Brands, settings,
+// etc. — so the camera is always one tap away from any page.
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { SwapModal } from "./SwapModal";
 
+const HIDE_ON_PATHS = ["/", "/home-v3", "/scan"];
+
 export function SwapFab() {
+  const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
+
+  if (
+    HIDE_ON_PATHS.some((p) =>
+      p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(`${p}/`),
+    )
+  ) {
+    return null;
+  }
 
   return (
     <>
