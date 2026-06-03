@@ -413,11 +413,39 @@ const WHOLE_FOOD_REGISTRY: Array<{
   { category: "herb",   canonical: "Fresh dill",  aliases: ["dill"] },
 ];
 
+// Compact Levenshtein. Two-row DP, early exit when min row > maxAllowed so
+// we don't pay full O(n*m) when the strings are obviously different. Used by
+// matchWholeFood() for typo correction.
+function editDistance(a: string, b: string, maxAllowed: number): number {
+  if (Math.abs(a.length - b.length) > maxAllowed) return maxAllowed + 1;
+  if (a === b) return 0;
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let prev = new Array<number>(n + 1);
+  let curr = new Array<number>(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    let rowMin = curr[0]!;
+    for (let j = 1; j <= n; j++) {
+      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+      curr[j] = Math.min(prev[j]! + 1, curr[j - 1]! + 1, prev[j - 1]! + cost);
+      if (curr[j]! < rowMin) rowMin = curr[j]!;
+    }
+    if (rowMin > maxAllowed) return maxAllowed + 1;
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n]!;
+}
+
 function matchWholeFood(rawQuery: string): { canonical: string; category: string } | null {
   const q = rawQuery.trim().toLowerCase();
   if (q.length < 2 || q.length > 32) return null;
   // Strip a trailing 's' for naive plural → singular.
   const stripped = q.endsWith("s") ? q.slice(0, -1) : q;
+  // 1. Exact match first — cheap.
   for (const entry of WHOLE_FOOD_REGISTRY) {
     for (const alias of entry.aliases) {
       if (alias === q || alias === stripped) {
@@ -425,6 +453,21 @@ function matchWholeFood(rawQuery: string): { canonical: string; category: string
       }
     }
   }
+  // 2. Fuzzy fall-back: edit distance ≤1 for short queries (≤5 chars), ≤2
+  // for longer. "aple" → "apple", "brocoli" → "broccoli". Cap at distance 1
+  // for very short queries so "an" doesn't match "egg". Pick the smallest
+  // distance across all aliases.
+  const maxDist = q.length <= 5 ? 1 : 2;
+  let best: { entry: (typeof WHOLE_FOOD_REGISTRY)[number]; dist: number } | null = null;
+  for (const entry of WHOLE_FOOD_REGISTRY) {
+    for (const alias of entry.aliases) {
+      const d = Math.min(editDistance(q, alias, maxDist), editDistance(stripped, alias, maxDist));
+      if (d <= maxDist && (!best || d < best.dist)) {
+        best = { entry, dist: d };
+      }
+    }
+  }
+  if (best) return { canonical: best.entry.canonical, category: best.entry.category };
   return null;
 }
 

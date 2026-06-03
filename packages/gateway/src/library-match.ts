@@ -121,6 +121,17 @@ real-food alternatives — recipes and / or brand products.
 
 Your job: pick the candidates that actually match what the user wants.
 
+Interpret the query charitably. Before matching:
+1. SILENTLY normalize obvious typos and shorthand. "snickrs" means
+   "Snickers". "oroes" means "Oreos". "choc chip cookies" means
+   "chocolate chip cookies". "PB" means "peanut butter". "OJ" means
+   "orange juice".
+2. Identify the user's INTENT: what brand or what category of food are
+   they looking to swap? Match against intent, not the raw spelling.
+3. Single-word generic foods ("apples", "broccoli", "salmon") are whole
+   foods that don't need swapping — these are handled before you ever
+   see them, so if such a query somehow reaches you, return [] / null.
+
 Hard rules:
 - Only pick candidates that genuinely solve the user's craving. If the query
   is "chocolate nougat bar" and a candidate is "pickled herring," do NOT
