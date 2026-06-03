@@ -58,16 +58,24 @@ export function AboutYouEditor({ initialText, generatedAt }: AboutYouEditorProps
 
       {editing ? (
         <div className="space-y-3">
+          <p className="text-xs text-ink-muted leading-snug">
+            Who are you and what's your food goal? Keep it brief —
+            around 30 words. The AI uses this for every recommendation.
+          </p>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            rows={8}
-            maxLength={2000}
+            rows={4}
+            maxLength={300}
             className="w-full px-3 py-2 text-sm rounded-soft bg-white border border-ink/10 outline-none focus:border-sunrise leading-relaxed text-ink"
-            placeholder="What should the coach remember about you? Diet history, what's worked, what hasn't, anything that should shape your swaps…"
+            placeholder="e.g. You're gluten-free, cooking for two on weeknights, aiming to lower inflammation."
           />
           <div className="flex items-center justify-between text-xs text-ink-muted">
-            <span>{text.length} / 2000</span>
+            <span>
+              {text.trim().split(/\s+/).filter(Boolean).length} words
+              {" · "}
+              {text.length} / 300 chars
+            </span>
             <span>Used by the AI for every recommendation.</span>
           </div>
           <div className="flex items-center justify-end gap-2">

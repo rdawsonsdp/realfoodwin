@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const Schema = z.object({
-  summary_text: z.string().min(1).max(2000),
+  summary_text: z.string().min(1).max(300),
 });
 
 export async function POST(req: Request) {
