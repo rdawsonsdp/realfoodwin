@@ -440,6 +440,95 @@ function editDistance(a: string, b: string, maxAllowed: number): number {
   return prev[n]!;
 }
 
+// Quick keyword search against the curated recipes library for a recipe that
+// USES the given whole-food ingredient. Used by the whole-food fast-path so
+// "apples" returns both "this is already real food" AND a baked-apple recipe.
+// Ranks by (a) ingredient appears in title, (b) appears in description, (c)
+// shortest title (favor focused recipes). No embeddings, no LLM — sub-100ms.
+async function findRecipeUsingIngredient(
+  canonicalName: string,
+  category: string,
+): Promise<{
+  title: string;
+  ingredients: { name: string; quantity: string; unit?: string }[];
+  steps: string[];
+  time_min: number | null;
+  meal_type: string | null;
+} | null> {
+  // Stem the canonical name to its singular form so "Apples" hits both
+  // "Apple Crumble" and "Apple Slices". Strip trailing 's' or 'es' — naive
+  // but sufficient for our registry (no irregular plurals).
+  const stem = canonicalName
+    .toLowerCase()
+    .replace(/\bes$/, "")
+    .replace(/s$/, "");
+  if (stem.length < 3) return null;
+
+  try {
+    const sb = getServiceSupabase();
+    const pattern = `%${stem}%`;
+    const { data, error } = await sb
+      .from("recipes")
+      .select("title, description, ingredients, steps, time_min, meal_type")
+      .or(`title.ilike.${pattern},description.ilike.${pattern}`)
+      .limit(20);
+    if (error || !data || data.length === 0) return null;
+
+    // Rank: title match > description-only match. Among title matches, prefer
+    // shorter titles (focused recipes). Among description-only, prefer those
+    // that mention the ingredient earlier in the description.
+    type Row = {
+      title: string;
+      description: string | null;
+      ingredients: unknown;
+      steps: unknown;
+      time_min: number | null;
+      meal_type: string | null;
+    };
+    const ranked = (data as Row[])
+      .map((r) => {
+        const titleLower = r.title.toLowerCase();
+        const descLower = (r.description ?? "").toLowerCase();
+        const inTitle = titleLower.includes(stem);
+        const descIdx = inTitle ? -1 : descLower.indexOf(stem);
+        const score = inTitle
+          ? 1000 - r.title.length // shorter focused titles win
+          : descIdx >= 0
+            ? 500 - descIdx // earlier mentions win
+            : -1;
+        return { row: r, score };
+      })
+      .filter((x) => x.score >= 0)
+      .sort((a, b) => b.score - a.score);
+
+    const best = ranked[0]?.row;
+    if (!best) return null;
+    // Coerce ingredients / steps to safe shapes — the DB column is jsonb.
+    const ingredients = Array.isArray(best.ingredients)
+      ? (best.ingredients as Array<{ name?: string; quantity?: string; unit?: string }>).map((i) => ({
+          name: String(i.name ?? ""),
+          quantity: String(i.quantity ?? ""),
+          ...(i.unit ? { unit: String(i.unit) } : {}),
+        }))
+      : [];
+    const steps = Array.isArray(best.steps)
+      ? (best.steps as unknown[]).map((s) => String(s))
+      : [];
+    void category;
+    return {
+      title: best.title,
+      ingredients,
+      steps,
+      time_min: best.time_min,
+      meal_type: best.meal_type,
+    };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("[findRecipeUsingIngredient] lookup failed:", err);
+    return null;
+  }
+}
+
 function matchWholeFood(rawQuery: string): { canonical: string; category: string } | null {
   const q = rawQuery.trim().toLowerCase();
   if (q.length < 2 || q.length > 32) return null;
@@ -845,15 +934,36 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
   if (!input.image && input.request.trim().length >= 2) {
     const wholeFoodHit = matchWholeFood(input.request);
     if (wholeFoodHit) {
+      // Pair the "this is already real food" message with a curated recipe
+      // that USES this ingredient. Quick keyword search against the library
+      // — no LLM call, sub-100ms.
+      const suggestedRecipe = await findRecipeUsingIngredient(
+        wholeFoodHit.canonical,
+        wholeFoodHit.category,
+      );
+      const lowerCanon = wholeFoodHit.canonical.toLowerCase();
+      const narrative = suggestedRecipe
+        ? `Already a whole, real food — no ultra-processing to swap. Here's a great way to enjoy ${lowerCanon}: ${suggestedRecipe.title}.`
+        : `Already a whole, real food — no ultra-processing to swap. Eat as-is, or try a more specific search like "${lowerCanon} dessert" or "${lowerCanon} snack" for recipe ideas.`;
       const output: SwapGenerator.SwapGeneratorOutput = {
-        title: wholeFoodHit.canonical,
-        tagline: "Already a real food — no swap needed.",
-        recipe: { ingredients: [], steps: [], time_min: 0 },
-        narrative:
-          `${wholeFoodHit.canonical} is a whole food on its own — there's nothing ultra-processed to swap. Eat it as-is, or use it in a recipe. If you want recipe ideas that use ${wholeFoodHit.canonical.toLowerCase()}, try a more specific search like "${wholeFoodHit.canonical.toLowerCase()} dessert" or "${wholeFoodHit.canonical.toLowerCase()} snack".`,
+        title: suggestedRecipe ? suggestedRecipe.title : wholeFoodHit.canonical,
+        tagline: suggestedRecipe
+          ? `${wholeFoodHit.canonical}: already real food, here's a tasty way to use them.`
+          : `${wholeFoodHit.canonical}: already real food — no swap needed.`,
+        recipe: suggestedRecipe
+          ? {
+              ingredients: suggestedRecipe.ingredients,
+              steps: suggestedRecipe.steps,
+              time_min: suggestedRecipe.time_min ?? 0,
+              ...(suggestedRecipe.meal_type ? { meal_type: suggestedRecipe.meal_type } : {}),
+            }
+          : { ingredients: [], steps: [], time_min: 0 },
+        narrative,
         tuned_for_you_reasons: [
-          "This is a whole, unprocessed food — Real Food Win has nothing to improve here.",
-          "No additives, no ultra-processing, nothing to swap.",
+          `${wholeFoodHit.canonical} is a whole, unprocessed food — already aligned with Real Food Win.`,
+          suggestedRecipe
+            ? `Paired with a curated recipe from our library that uses ${lowerCanon}.`
+            : "No additives, no ultra-processing, nothing to swap.",
         ],
         bad_markers: [],
         good_markers: ["whole_food"],
