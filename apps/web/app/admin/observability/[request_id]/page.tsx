@@ -152,6 +152,8 @@ function summarizeAgent(row: TraceRow): string {
       const what = parts.length > 0 ? parts.join(" + ") : "a curated match";
       return `Matched against the curated library — ${what} fit the search.`;
     }
+    case "library_miss_fast_swap":
+      return "No curated match — a fast Haiku pass classified the food and wrote the swap directly (skipped the slower expert generator).";
     case "library_miss_llm_fallback":
       return "No curated match — Claude wrote this from its training knowledge (no live web search).";
     case "library_miss_web_fallback":

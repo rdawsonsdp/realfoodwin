@@ -43,6 +43,13 @@ function client(): Anthropic {
     defaultHeaders: useHelicone
       ? { "Helicone-Auth": `Bearer ${process.env.HELICONE_API_KEY}` }
       : undefined,
+    // The SDK defaults to a 10-minute timeout and 2 retries. A swap request
+    // must never be able to sit on a stalled generation for minutes — that's
+    // the "app hung" symptom. Cap the wall-clock per call and retry once.
+    // Per-call overrides (opts.timeoutMs) tighten this further for the fast
+    // classify hop.
+    timeout: 60_000,
+    maxRetries: 1,
   });
   return cached;
 }
@@ -68,6 +75,10 @@ export interface ToolCallOptions {
   maxTokens?: number;
   temperature?: number;
   heliconeUserId?: string;
+  // Per-call wall-clock cap (ms). Overrides the client default (60s). The fast
+  // classify→swap hop sets this tight (~12s) so a slow Haiku call falls
+  // through to Sonnet quickly instead of compounding latency.
+  timeoutMs?: number;
 }
 
 export interface ToolCallResult {
@@ -109,7 +120,7 @@ export async function callWithTool(opts: ToolCallOptions): Promise<ToolCallResul
       // Anthropic SDK types are slightly mismatched against our generic schema record; cast is intentional.
       tools: [opts.tool as unknown as Anthropic.Tool],
       tool_choice: { type: "tool", name: opts.tool.name },
-    });
+    }, opts.timeoutMs ? { timeout: opts.timeoutMs } : undefined);
 
     const block = resp.content.find((c) => c.type === "tool_use");
     if (!block || block.type !== "tool_use") {

@@ -273,6 +273,79 @@ export const TOOL = {
   },
 } as const;
 
+// ---------------- Fast classify → swap (Haiku) ----------------
+//
+// Runs AFTER the curated library misses and BEFORE the expensive cold Sonnet
+// generation. A processed food the library doesn't carry ("Frosted Flakes")
+// used to drop straight to a 20-40s Sonnet call with no feedback — the "app
+// hung" symptom. Instead, a cheap Haiku call first infers what the food IS
+// (category, why it's processed) and writes a real-food swap directly. Haiku
+// flags genuinely-hard cases (needs careful nutrition analysis, ambiguous
+// input, not actually a food) with confidence:"low" so the runner escalates
+// to Sonnet only when it's worth the latency.
+export const FAST_SWAP_SYSTEM_PROMPT = `You are the Real Food Win fast swap classifier.
+
+A user typed the name of a packaged/processed food (e.g. "Frosted Flakes",
+"Pop-Tarts", "Gatorade"). The curated library had no match, so it's your job
+to act FAST: infer what this food actually is and return a real-food swap.
+
+Step 1 — Classify silently:
+- Identify the food's category and form factor (e.g. "Frosted Flakes" = a
+  sweetened corn-flake breakfast cereal; "Gatorade" = a sweetened sports
+  drink). Normalize obvious typos and brand shorthand.
+- Decide the swap DIRECTION (e.g. cereal → a whole-grain, naturally-sweetened
+  breakfast; soda → a fruit-infused sparkling drink).
+
+Step 2 — Produce the swap via the fast_swap tool, following ALL Real Food Win
+ingredient rules. Fill "classification" with your one-line read of the food.
+
+Set "confidence":
+- "high"  — a common, clearly-identifiable processed food with an obvious
+            real-food substitute. (Most cases. Frosted Flakes is "high".)
+- "medium"— identifiable but the best swap is genuinely debatable.
+- "low"   — you are NOT confident: the input is ambiguous, not clearly a food,
+            a whole food that shouldn't be here, or the swap needs careful
+            nutrition reasoning beyond a quick classify. On "low" still return
+            your best guess, but the system will escalate to the expert
+            generator.
+
+Be fast and decisive. Keep the recipe short (5-8 ingredients, a few steps).
+
+Output ONLY via the fast_swap tool.`;
+
+// Same output shape as the full swap, plus a classification line and a
+// confidence the runner uses to decide whether to escalate to Sonnet.
+export const FAST_SWAP_TOOL = {
+  name: "fast_swap",
+  description:
+    "Quickly classify a processed food and return a real-food swap, plus a confidence flag the system uses to decide whether to escalate to the expert generator.",
+  input_schema: {
+    type: "object",
+    properties: {
+      classification: {
+        type: "string",
+        description:
+          "One-line read of what the food IS, e.g. 'sweetened corn-flake breakfast cereal'.",
+      },
+      confidence: {
+        type: "string",
+        enum: ["high", "medium", "low"],
+        description:
+          "high = obvious swap; medium = debatable; low = unsure / escalate to expert generator.",
+      },
+      ...TOOL.input_schema.properties,
+    },
+    required: [
+      "classification",
+      "confidence",
+      "title",
+      "recipe",
+      "narrative",
+      "tuned_for_you_reasons",
+    ],
+  },
+} as const;
+
 export const OutputSchema = z.object({
   title: z.string(),
   tagline: z.string().optional(),
@@ -347,3 +420,13 @@ export const OutputSchema = z.object({
 });
 
 export type SwapGeneratorOutput = z.infer<typeof OutputSchema>;
+
+// Fast-swap output = the full swap shape plus the classifier's metadata. The
+// extra fields are stripped before the swap is persisted/returned so the rest
+// of the pipeline only ever sees a plain SwapGeneratorOutput.
+export const FastSwapOutputSchema = OutputSchema.extend({
+  classification: z.string().optional(),
+  confidence: z.enum(["high", "medium", "low"]).optional(),
+});
+
+export type FastSwapOutput = z.infer<typeof FastSwapOutputSchema>;

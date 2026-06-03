@@ -257,6 +257,7 @@ export interface SwapTrace {
     | "cache_hit"
     | "library_hit"
     | "library_miss_llm_fallback"
+    | "library_miss_fast_swap"
     | "library_miss_web_fallback"
     | "image_route"
     | "image_identified_library_hit"
@@ -1192,6 +1193,153 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
   let webSearches: string[] = [];
   let webUrlsFetched: string[] = [];
   let toolInput: unknown = null;
+
+  // Fast classify → swap (Haiku). The curated library missed and this is a
+  // text recipe request (not product-discovery, which needs Sonnet +
+  // web_search to find an authorized brand). Rather than drop straight to a
+  // cold ~20-40s Sonnet generation — the "app hung on Frosted Flakes"
+  // symptom — ask Haiku to (a) infer what this processed food IS and (b) write
+  // a real-food swap directly. ~1-2s on the common case. Haiku flags
+  // genuinely-hard cases with confidence:"low" and we escalate to Sonnet then.
+  if (!input.image && !userAskedForProduct && input.request.trim().length >= 2) {
+    const fastStart = Date.now();
+    let fastModel = "";
+    let fastUsage = { input_tokens: 0, output_tokens: 0 };
+    let fastStatus: "success" | "error" = "success";
+    try {
+      const fastResult = await callWithTool({
+        tier: "haiku",
+        system: composeSystemPrompt(SwapGenerator.FAST_SWAP_SYSTEM_PROMPT),
+        user: userPrompt,
+        tool: SwapGenerator.FAST_SWAP_TOOL,
+        heliconeUserId: input.userId ?? "anonymous",
+        maxTokens: 1500,
+        temperature: 0.4,
+        timeoutMs: 12_000,
+      });
+      fastModel = fastResult.model;
+      fastUsage = fastResult.usage;
+      const fastParsed = SwapGenerator.FastSwapOutputSchema.safeParse(fastResult.toolInput);
+      if (!fastParsed.success) {
+        fastStatus = "error";
+        throw new SchemaValidationError(
+          "Fast swap output failed schema",
+          fastParsed.error.format(),
+        );
+      }
+      // Low confidence → genuinely hard case. Escalate to Sonnet rather than
+      // ship a shaky Haiku swap. (Thrown so the catch logs + falls through.)
+      if (fastParsed.data.confidence === "low") {
+        throw new Error("fast_swap low confidence — escalating to Sonnet");
+      }
+      // Strip the classifier-only metadata; the rest of the pipeline only ever
+      // sees a plain SwapGeneratorOutput.
+      const { classification, confidence, ...fastOutput } = fastParsed.data;
+      const fastMs = Date.now() - fastStart;
+
+      let fastSaved = null;
+      if (input.userId) {
+        fastSaved = await cacheSwap({
+          user_id: input.userId,
+          product_id: input.productId ?? null,
+          recipe: fastOutput.recipe,
+          nutrition: fastOutput.nutrition ?? {},
+          narrative: fastOutput.narrative,
+          output: fastOutput,
+          swap_target: input.request,
+        });
+      }
+
+      await logAgentCall({
+        user_id: input.userId,
+        agent_name: "swap_generator_fast",
+        model: fastModel,
+        prompt_version: SwapGenerator.PROMPT_VERSION,
+        input_tokens: fastUsage.input_tokens,
+        output_tokens: fastUsage.output_tokens,
+        cost_usd: calculateCost("haiku", fastUsage),
+        latency_ms: fastMs,
+        status: fastStatus,
+        client_platform: input.clientPlatform,
+        request_id: requestId,
+      });
+
+      const debug: SwapDebug = {
+        source: "llm",
+        model: fastModel || null,
+        prompt_version: SwapGenerator.PROMPT_VERSION,
+        request: input.request,
+        merged_preferences: input.preferences ?? null,
+        avoid_titles: input.avoidTitles ?? null,
+        feedback: input.feedback ?? null,
+        user_context: digestUserContext(ctx),
+        user_prompt: userPrompt,
+      };
+      const fastAltRecs: SwapTrace["recommendations"] = (fastOutput.alternates ?? [])
+        .slice(0, 8)
+        .map((a) => ({ id: null, title: a.title, kind: "alternate" as const }));
+      const trace: SwapTrace = {
+        request_id: requestId,
+        classification_reasoning: "library_miss_fast_swap",
+        classification_confidence: confidence === "high" ? 0.9 : confidence === "medium" ? 0.6 : null,
+        source_chosen: "llm",
+        source_reasoning: classification ?? null,
+        db_match_found: false,
+        library_recipe_id: null,
+        library_product_ids: [],
+        category_implicit: fastOutput.recipe?.meal_type ?? null,
+        recommendations: [
+          { id: fastSaved?.id ?? null, title: fastOutput.title, kind: "primary" },
+          ...fastAltRecs,
+        ],
+        latency_cache_ms: null,
+        latency_embed_ms: null,
+        latency_pgvector_ms: null,
+        latency_judge_ms: null,
+        latency_llm_ms: fastMs,
+        latency_web_ms: null,
+        latency_image_id_ms: null,
+        latency_total_ms: Date.now() - overallStart,
+        tokens_input: fastUsage.input_tokens,
+        tokens_output: fastUsage.output_tokens,
+        cost_usd: calculateCost("haiku", fastUsage),
+        web_searches: [],
+        web_urls_fetched: [],
+        library_written: false,
+        library_written_product_id: null,
+        merged_preferences: input.preferences ?? null,
+        avoid_titles: input.avoidTitles ?? null,
+        feedback: input.feedback ?? null,
+        user_context: digestUserContext(ctx),
+        user_prompt: userPrompt,
+        model: fastModel || null,
+        prompt_version: SwapGenerator.PROMPT_VERSION,
+      };
+      return { cached: false, swap: fastSaved, output: fastOutput, latencyMs: fastMs, debug, trace };
+    } catch (fastErr) {
+      // Any fast-path failure (timeout, schema miss, low confidence) is a
+      // fallthrough — the Sonnet generation below still produces a swap.
+      if (fastStatus !== "error") fastStatus = "error";
+      await logAgentCall({
+        user_id: input.userId,
+        agent_name: "swap_generator_fast",
+        model: fastModel,
+        prompt_version: SwapGenerator.PROMPT_VERSION,
+        input_tokens: fastUsage.input_tokens,
+        output_tokens: fastUsage.output_tokens,
+        cost_usd: calculateCost("haiku", fastUsage),
+        latency_ms: Date.now() - fastStart,
+        status: fastStatus,
+        client_platform: input.clientPlatform,
+        request_id: requestId,
+      });
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[runSwapGenerator] fast classify→swap fell through to Sonnet:",
+        fastErr instanceof Error ? fastErr.message : String(fastErr),
+      );
+    }
+  }
 
   try {
     if (useWebSearch) {
