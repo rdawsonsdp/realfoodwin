@@ -273,6 +273,94 @@ export const TOOL = {
   },
 } as const;
 
+// ---------------- Food category classifier (cheap Haiku) ----------------
+//
+// The "quick, cheap call" that runs the moment the library misses: it reads a
+// typed product name and returns ONE structured food category from a closed
+// taxonomy (plus a coarse meal slot). That category drives a category-filtered
+// lookup against the brand catalog ("Frosted Flakes" -> cereal_granola -> pull
+// the catalog's cereals), instead of a blind global embedding search. Kept
+// tiny (a few output tokens) so it adds ~1s, not the cost of a full swap.
+//
+// IMPORTANT: keep this list in sync with brand_products.category in the DB
+// (migration 0020) and the matcher. Adding a category here means re-running
+// the catalog categorization so products can actually fall into it.
+export const PRODUCT_CATEGORIES = [
+  "cereal_granola",
+  "chips_crackers",
+  "cookies_baked",
+  "candy_chocolate",
+  "snack_bars",
+  "jerky_meat_snacks",
+  "beverages",
+  "protein_supplements",
+  "meat_poultry_seafood",
+  "dairy_eggs",
+  "pantry_condiments",
+  "tortillas_wraps",
+  "frozen_prepared_meals",
+  "other",
+] as const;
+
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+
+export const CLASSIFY_SYSTEM_PROMPT = `You are the Real Food Win food classifier.
+
+A user typed the name of a packaged/processed food (e.g. "Frosted Flakes",
+"Gatorade", "Doritos"). Identify what category of food it is so the system can
+pull real-food alternatives of the SAME category from the brand catalog.
+
+Pick exactly ONE category from this closed list (use the exact key):
+- cereal_granola — breakfast cereal, granola, muesli, instant/hot cereal, oatmeal
+- chips_crackers — chips, tortilla chips, crackers, pretzels, popcorn, savory crunchy snacks
+- cookies_baked — cookies, brownies, muffins, sweet baked goods, baking mixes
+- candy_chocolate — candy, chocolate, gummies, sweet treats, ice cream / frozen desserts
+- snack_bars — protein/energy/granola/snack bars and bites
+- jerky_meat_snacks — jerky, meat sticks, biltong, pork rinds
+- beverages — soda, juice, sports/electrolyte drinks, coffee, tea, sparkling water, drink mixes
+- protein_supplements — protein powder, collagen, creatine, supplements, vitamins
+- meat_poultry_seafood — meat, poultry, seafood, sausage, hot dogs, bacon, deli meats
+- dairy_eggs — milk, yogurt, kefir, cheese, butter, ghee, eggs
+- pantry_condiments — oils, flours, sweeteners, honey, nut/seed butters, sauces, dressings, condiments, broth, soup, salsa, spices
+- tortillas_wraps — tortillas, taco shells, wraps (tortilla CHIPS go to chips_crackers)
+- frozen_prepared_meals — frozen or prepared meals, meals-to-go, ready entrees
+- other — only if it is genuinely not a recognizable food
+
+Normalize typos and brand shorthand silently. Choose the single best fit;
+prefer a specific category over "other". Also return a coarse meal_type when
+obvious (breakfast, lunch, dinner, snack, dessert, beverage, anytime).
+
+Output ONLY via the classify_food tool.`;
+
+export const CLASSIFY_TOOL = {
+  name: "classify_food",
+  description:
+    "Classify a typed food/product name into one closed food category so the system can pull same-category real-food alternatives.",
+  input_schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["category"],
+    properties: {
+      category: {
+        type: "string",
+        enum: PRODUCT_CATEGORIES as unknown as string[],
+        description: "The single best-fit food category key.",
+      },
+      meal_type: {
+        type: "string",
+        description: "Coarse meal slot when obvious: breakfast, lunch, dinner, snack, dessert, beverage, anytime.",
+      },
+    },
+  },
+} as const;
+
+export const ClassifyOutputSchema = z.object({
+  category: z.enum(PRODUCT_CATEGORIES),
+  meal_type: z.string().optional(),
+});
+
+export type ClassifyOutput = z.infer<typeof ClassifyOutputSchema>;
+
 // ---------------- Fast classify → swap (Haiku) ----------------
 //
 // Runs AFTER the curated library misses and BEFORE the expensive cold Sonnet

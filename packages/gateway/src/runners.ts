@@ -19,6 +19,7 @@ import { cacheSwap, getCachedSwap } from "./cache";
 import { NoLibraryProductsError, SchemaValidationError } from "./errors";
 import {
   matchLibrary,
+  matchProductsByCategory,
   type MatchedRecipe,
   type MatchedProduct,
   type SwapGoal,
@@ -1207,35 +1208,60 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
     let fastUsage = { input_tokens: 0, output_tokens: 0 };
     let fastStatus: "success" | "error" = "success";
     try {
-      // Run the curated PRODUCT matcher concurrently with the Haiku swap so
-      // the "buy this" lookup overlaps generation (no added wall-clock). A
-      // recipe-only goal never searched products upstream; this surfaces any
-      // curated real-food product to pair with the recipe. Best-effort — a
-      // matcher failure resolves to null and the recipe still ships.
-      const [fastResult, prodMatch] = await Promise.all([
-        callWithTool({
-          tier: "haiku",
-          system: composeSystemPrompt(SwapGenerator.FAST_SWAP_SYSTEM_PROMPT),
-          user: userPrompt,
-          tool: SwapGenerator.FAST_SWAP_TOOL,
-          heliconeUserId: input.userId ?? "anonymous",
-          // Room for the primary recipe plus 2-3 LIGHT alternates (no embedded
-          // recipes). Fail fast (no retry) so a slow call drops to Sonnet
-          // rather than retrying and doubling the bounded latency.
-          maxTokens: 2000,
-          temperature: 0.4,
-          timeoutMs: 14_000,
-          maxRetries: 0,
-        }),
-        matchLibrary({ query: input.request, goals: ["product"] }).catch((e) => {
-          // eslint-disable-next-line no-console
-          console.warn(
-            "[runSwapGenerator] fast-path product lookup failed:",
-            e instanceof Error ? e.message : String(e),
-          );
-          return null;
-        }),
-      ]);
+      // The "quick cheap call": classify the typed food into a structured
+      // category (cereal_granola, chips_crackers, ...) so we can pull SAME-
+      // CATEGORY real-food products from the brand catalog — "Frosted Flakes"
+      // -> cereal_granola -> the catalog's cereals — instead of a blind global
+      // embedding search. Tiny (a few tokens), runs concurrently with the swap.
+      const classifyPromise = callWithTool({
+        tier: "haiku",
+        system: SwapGenerator.CLASSIFY_SYSTEM_PROMPT,
+        user: input.request.trim(),
+        tool: SwapGenerator.CLASSIFY_TOOL,
+        heliconeUserId: input.userId ?? "anonymous",
+        maxTokens: 80,
+        temperature: 0,
+        timeoutMs: 8_000,
+        maxRetries: 0,
+      })
+        .then((r) => {
+          const p = SwapGenerator.ClassifyOutputSchema.safeParse(r.toolInput);
+          return p.success ? p.data : null;
+        })
+        .catch(() => null);
+
+      // The full Haiku swap (recipe). Room for the primary plus 2-3 LIGHT
+      // alternates (no embedded recipes). Fail fast (no retry) so a slow call
+      // drops to Sonnet rather than doubling the bounded latency.
+      const swapPromise = callWithTool({
+        tier: "haiku",
+        system: composeSystemPrompt(SwapGenerator.FAST_SWAP_SYSTEM_PROMPT),
+        user: userPrompt,
+        tool: SwapGenerator.FAST_SWAP_TOOL,
+        heliconeUserId: input.userId ?? "anonymous",
+        maxTokens: 2000,
+        temperature: 0.4,
+        timeoutMs: 14_000,
+        maxRetries: 0,
+      });
+
+      // Once the (fast) category is known, pull same-category products. This
+      // overlaps the remaining swap generation, so it adds ~no wall-clock.
+      const classify = await classifyPromise;
+      const classifiedCategory = classify?.category ?? null;
+      const prodPromise =
+        classifiedCategory && classifiedCategory !== "other"
+          ? matchProductsByCategory(input.request, classifiedCategory).catch((e) => {
+              // eslint-disable-next-line no-console
+              console.warn(
+                "[runSwapGenerator] category product lookup failed:",
+                e instanceof Error ? e.message : String(e),
+              );
+              return [] as MatchedProduct[];
+            })
+          : Promise.resolve([] as MatchedProduct[]);
+
+      const [fastResult, categoryProducts] = await Promise.all([swapPromise, prodPromise]);
       fastModel = fastResult.model;
       fastUsage = fastResult.usage;
       const fastParsed = SwapGenerator.FastSwapOutputSchema.safeParse(fastResult.toolInput);
@@ -1255,14 +1281,13 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
       // sees a plain SwapGeneratorOutput.
       const { classification, confidence, ...fastOutput } = fastParsed.data;
 
-      // Pair the Haiku recipe with any curated real-food PRODUCTS the matcher
-      // found, as "buy this" alternates ahead of Haiku's recipe alternates.
-      // This is what was missing: "Frosted Flakes" → a granola recipe AND, if
-      // the library carries a clean cereal, a product to buy. Capped at the
-      // schema max of 5 total alternates.
+      // Pair the Haiku recipe with same-category curated PRODUCTS as "buy this"
+      // alternates, ahead of Haiku's recipe alternates. This is the logic that
+      // was missing: "Frosted Flakes" → a granola recipe AND the catalog's
+      // real-food cereals to buy. Capped at the schema max of 5 alternates.
       let attachedProductIds: string[] = [];
-      if (prodMatch && prodMatch.products.length > 0) {
-        const productAlternates = prodMatch.products.slice(0, 4).map((p) => ({
+      if (categoryProducts.length > 0) {
+        const productAlternates = categoryProducts.slice(0, 4).map((p) => ({
           title: `${p.brand_name}: ${p.name}`,
           narrative: p.description ?? "",
           ...(p.product_url ? { product_url: p.product_url } : {}),
@@ -1270,7 +1295,7 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
           ...(p.image_url ? { product_image_url: p.image_url } : {}),
         }));
         fastOutput.alternates = [...productAlternates, ...(fastOutput.alternates ?? [])].slice(0, 5);
-        attachedProductIds = prodMatch.products.slice(0, 4).map((p) => p.id);
+        attachedProductIds = categoryProducts.slice(0, 4).map((p) => p.id);
       }
       const fastMs = Date.now() - fastStart;
 
@@ -1320,11 +1345,13 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
         classification_reasoning: "library_miss_fast_swap",
         classification_confidence: confidence === "high" ? 0.9 : confidence === "medium" ? 0.6 : null,
         source_chosen: "llm",
-        source_reasoning: classification ?? null,
+        source_reasoning: classifiedCategory
+          ? `${classification ?? "classified"} → category ${classifiedCategory}`
+          : classification ?? null,
         db_match_found: attachedProductIds.length > 0,
         library_recipe_id: null,
         library_product_ids: attachedProductIds,
-        category_implicit: fastOutput.recipe?.meal_type ?? null,
+        category_implicit: classifiedCategory ?? fastOutput.recipe?.meal_type ?? null,
         recommendations: [
           { id: fastSaved?.id ?? null, title: fastOutput.title, kind: "primary" },
           ...fastAltRecs,

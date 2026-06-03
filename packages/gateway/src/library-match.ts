@@ -259,6 +259,45 @@ async function fetchProductsByIds(ids: string[]): Promise<MatchedProduct[]> {
   return ids.map((id) => byId.get(id)).filter((p): p is MatchedProduct => !!p);
 }
 
+// Category-filtered product lookup. Used by the swap fallback after a typed
+// query is classified into a food category (e.g. "Frosted Flakes" ->
+// cereal_granola). Instead of a blind global cosine search, this restricts to
+// brand_products IN that category and ranks within it by embedding similarity
+// — so the catalog's cereals surface for a cereal query, not a random snack.
+//
+// Category membership is the relevance signal here, so the cosine floor is
+// loose (just filters pure noise). Returns [] on any failure so the caller can
+// proceed with the recipe alone.
+export async function matchProductsByCategory(
+  query: string,
+  category: string,
+  opts: { k?: number; minCosine?: number } = {},
+): Promise<MatchedProduct[]> {
+  const q = query.trim();
+  if (!q || !category) return [];
+  const k = opts.k ?? 6;
+  const minCosine = opts.minCosine ?? 0.2;
+  const { vector } = await embed(q, "query");
+  const sb = getServiceSupabase();
+  const { data, error } = await sb.rpc("match_brand_products_in_category", {
+    query_embedding: vector as unknown as string,
+    cat: category,
+    k,
+  });
+  if (error || !data) return [];
+  return (data as Array<MatchedProduct & { similarity: number }>)
+    .filter((p) => (p.similarity ?? 0) >= minCosine)
+    .map((p) => ({
+      id: p.id,
+      brand_id: p.brand_id,
+      brand_name: p.brand_name,
+      name: p.name,
+      description: p.description,
+      product_url: p.product_url,
+      image_url: p.image_url,
+    }));
+}
+
 export async function matchLibrary(
   input: LibraryMatchInput,
 ): Promise<LibraryMatchResult> {
