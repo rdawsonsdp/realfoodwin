@@ -563,6 +563,13 @@ function matchWholeFood(rawQuery: string): { canonical: string; category: string
 function buildSwapOutputFromLibrary(
   recipe: MatchedRecipe | null,
   products: MatchedProduct[],
+  opts: {
+    // When true (the photo-scan path), keep the SCANNED product as the
+    // primary card and treat the matched recipe as an embedded "make this
+    // at home" body. Default false retains the text-query behavior where
+    // the recipe (if any) wins the headline slot.
+    productAsPrimary?: boolean;
+  } = {},
 ): SwapGenerator.SwapGeneratorOutput {
   // Library content is hand-curated by the Real Food Win team, so these
   // markers hold across the catalog. They're the floor — the LLM path emits a
@@ -572,6 +579,54 @@ function buildSwapOutputFromLibrary(
     "no_seed_oils",
     "no_artificial_anything",
   ];
+
+  // Photo-scan path: product is the primary card, but the recipe rides
+  // along inside it so the user sees BOTH a product to buy AND a recipe to
+  // make.
+  if (opts.productAsPrimary && recipe && products[0]) {
+    const primary = products[0];
+    const rest = products.slice(1);
+    const recipeIngredients = Array.isArray(recipe.ingredients)
+      ? (recipe.ingredients as Array<{ name?: string; quantity?: string; unit?: string }>).map((i) => ({
+          name: String(i.name ?? ""),
+          quantity: String(i.quantity ?? ""),
+          ...(i.unit ? { unit: String(i.unit) } : {}),
+        }))
+      : [];
+    const recipeSteps = Array.isArray(recipe.steps)
+      ? (recipe.steps as unknown[]).map((s) => String(s))
+      : [];
+    return {
+      title: `${primary.brand_name}: ${primary.name}`,
+      tagline: `Buy this — or make it: ${recipe.title}`,
+      recipe: {
+        ingredients: recipeIngredients,
+        steps: recipeSteps,
+        time_min: recipe.time_min ?? 0,
+        ...(recipe.meal_type ? { meal_type: recipe.meal_type } : {}),
+      },
+      narrative:
+        primary.description ??
+        `${primary.brand_name} from the Real Food Win brand list, paired with a make-it-yourself version.`,
+      tuned_for_you_reasons: [
+        `From ${primary.brand_name}, a brand on the Real Food Win curated list`,
+        `Also includes a real-food recipe — "${recipe.title}" — using the same ingredient`,
+      ],
+      bad_markers: [],
+      good_markers: [...LIBRARY_DEFAULT_GOOD_MARKERS, "made_fresh" as const],
+      ...(primary.product_url ? { product_url: primary.product_url } : {}),
+      brand_name: primary.brand_name,
+      ...(primary.image_url ? { product_image_url: primary.image_url } : {}),
+      alternates: rest.slice(0, 7).map((p) => ({
+        title: `${p.brand_name}: ${p.name}`,
+        narrative: p.description ?? "",
+        ...(p.product_url ? { product_url: p.product_url } : {}),
+        brand_name: p.brand_name,
+        ...(p.image_url ? { product_image_url: p.image_url } : {}),
+      })),
+    };
+  }
+
   if (recipe) {
     const ingredients = Array.isArray(recipe.ingredients)
       ? (recipe.ingredients as Array<{
@@ -768,13 +823,45 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
     query: string;
     classification: SwapTrace["classification_reasoning"];
     latencyImageIdMs: number | null;
+    // Photo flow: always show both a product AND a recipe back to the user,
+    // regardless of their saved preferences. The user just framed a photo —
+    // they get more value from "here's the brand AND a real-food recipe
+    // using it" than from a one-sided answer.
+    forceBothGoals?: boolean;
   }) {
-    const goals: SwapGoal[] = (input.preferences?.goals as SwapGoal[] | undefined) ?? [];
-    const productOnly = goals.length === 1 && goals[0] === "product";
+    const userGoals: SwapGoal[] = (input.preferences?.goals as SwapGoal[] | undefined) ?? [];
+    const goals: SwapGoal[] = opts.forceBothGoals ? [] : userGoals;
+    const productOnly = !opts.forceBothGoals && userGoals.length === 1 && userGoals[0] === "product";
     const libraryStart = Date.now();
     const match = await matchLibrary({ query: opts.query, goals });
     if (match.recipe || match.products.length > 0) {
-      const output = buildSwapOutputFromLibrary(match.recipe, match.products);
+      // Photo path: if the matcher returned a product but no recipe, find a
+      // recipe that uses the identified ingredient via the cheap keyword
+      // search. Sub-100ms, no LLM call. This is the "always show both"
+      // guarantee for the scan flow.
+      let recipeForOutput = match.recipe;
+      let recipeSuggestedFromIngredient = false;
+      if (opts.forceBothGoals && !recipeForOutput && match.products[0]) {
+        const recipeSuggestion = await findRecipeUsingIngredient(opts.query, "scanned_product");
+        if (recipeSuggestion) {
+          recipeForOutput = {
+            id: "__suggested__",
+            title: recipeSuggestion.title,
+            description: null,
+            meal_type: recipeSuggestion.meal_type,
+            time_min: recipeSuggestion.time_min,
+            ingredients: recipeSuggestion.ingredients,
+            steps: recipeSuggestion.steps,
+          };
+          recipeSuggestedFromIngredient = true;
+        }
+      }
+      const output = buildSwapOutputFromLibrary(recipeForOutput, match.products, {
+        // When the recipe was injected from an ingredient lookup, keep the
+        // product as the primary title (it's what the user scanned). The
+        // recipe rides along on the same card.
+        productAsPrimary: recipeSuggestedFromIngredient,
+      });
       let saved = null;
       if (input.userId) {
         saved = await cacheSwap({
@@ -913,6 +1000,9 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
           query: photoIdentifiedQuery,
           classification: "image_identified_library_hit",
           latencyImageIdMs: photoIdLatencyMs,
+          // Scan flow: always pair a product with a recipe so the user sees
+          // both options.
+          forceBothGoals: true,
         });
         if (hit) return hit;
       } catch (err) {
@@ -1062,10 +1152,13 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
   }
 
   const ctx = await loadUserContext(input.userId);
+  const photoBothGoalsSuffix = input.image
+    ? "\n\nThis swap came from a PHOTO. Always return BOTH a recipe (in `recipe`) AND at least one product alternate (in `alternates` with product_url + brand_name set, pointing to a Real Food Win brand). The user wants to see a buy option AND a make-it option side by side."
+    : "";
   const baseRequest = input.image
     ? input.request.trim()
-      ? `${input.request} (the user also attached a photo of the food — identify it from the image and confirm in the swap_summary)`
-      : "Identify the food shown in the attached photo and produce a real-food swap for it."
+      ? `${input.request} (the user also attached a photo of the food — identify it from the image and confirm in the swap_summary)${photoBothGoalsSuffix}`
+      : `Identify the food shown in the attached photo and produce a real-food swap for it.${photoBothGoalsSuffix}`
     : input.request;
   const avoidBlock =
     input.avoidTitles && input.avoidTitles.length > 0
