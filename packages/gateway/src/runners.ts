@@ -734,21 +734,43 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
   try {
     if (useWebSearch) {
       const authorizedHostnames = await getAuthorizedBrandHostnames();
-      const result = await callWithToolAndWebSearch({
-        tier: "sonnet",
-        system:
-          SwapGenerator.SYSTEM_PROMPT + buildWebSearchPromptSuffix(authorizedHostnames),
-        user: userPrompt,
-        tool: SwapGenerator.TOOL,
-        heliconeUserId: input.userId ?? "anonymous",
-        maxWebSearches: 5,
-        allowedDomains: authorizedHostnames,
-      });
-      usage = result.usage;
-      model = result.model;
-      webSearches = result.webSearches;
-      webUrlsFetched = result.webUrlsFetched;
-      toolInput = result.toolInput;
+      try {
+        const result = await callWithToolAndWebSearch({
+          tier: "sonnet",
+          system:
+            SwapGenerator.SYSTEM_PROMPT + buildWebSearchPromptSuffix(authorizedHostnames),
+          user: userPrompt,
+          tool: SwapGenerator.TOOL,
+          heliconeUserId: input.userId ?? "anonymous",
+          maxWebSearches: 5,
+          allowedDomains: authorizedHostnames,
+        });
+        usage = result.usage;
+        model = result.model;
+        webSearches = result.webSearches;
+        webUrlsFetched = result.webUrlsFetched;
+        toolInput = result.toolInput;
+      } catch (webErr) {
+        // Sonnet sometimes ends the turn after web_search without emitting our
+        // function tool (stop_reason pause_turn / end_turn with text only).
+        // Rather than 500-ing the user, retry without the web_search tool so
+        // the model is forced to call generate_swap.
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[runSwapGenerator] web_search path failed, retrying without web_search:",
+          webErr instanceof Error ? webErr.message : String(webErr),
+        );
+        const result = await callWithTool({
+          tier: "sonnet",
+          system: SwapGenerator.SYSTEM_PROMPT,
+          user: userPrompt,
+          tool: SwapGenerator.TOOL,
+          heliconeUserId: input.userId ?? "anonymous",
+        });
+        usage = result.usage;
+        model = result.model;
+        toolInput = result.toolInput;
+      }
     } else {
       const result = await callWithTool({
         tier: "sonnet",
