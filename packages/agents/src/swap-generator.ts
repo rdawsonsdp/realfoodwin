@@ -311,6 +311,12 @@ Set "confidence":
 
 Be fast and decisive. Keep the recipe short (5-8 ingredients, a few steps).
 
+ALWAYS include 2-3 "alternates" — genuinely different real-food swaps (a
+different format, flavor, or cook time from the primary and from each other).
+Keep alternates LIGHT: just a title, a one-line tagline, and a one-sentence
+narrative. Do NOT write full recipes for the alternates (the app fetches the
+recipe when the user picks one) — this keeps you fast. Don't leave them empty.
+
 Output ONLY via the fast_swap tool.`;
 
 // Same output shape as the full swap, plus a classification line and a

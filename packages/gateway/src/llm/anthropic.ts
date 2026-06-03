@@ -79,6 +79,10 @@ export interface ToolCallOptions {
   // classify→swap hop sets this tight (~12s) so a slow Haiku call falls
   // through to Sonnet quickly instead of compounding latency.
   timeoutMs?: number;
+  // Per-call retry override. The fast path sets 0 so a timeout fails straight
+  // through to Sonnet instead of retrying (a retry would double the latency
+  // the timeout was meant to bound).
+  maxRetries?: number;
 }
 
 export interface ToolCallResult {
@@ -120,7 +124,12 @@ export async function callWithTool(opts: ToolCallOptions): Promise<ToolCallResul
       // Anthropic SDK types are slightly mismatched against our generic schema record; cast is intentional.
       tools: [opts.tool as unknown as Anthropic.Tool],
       tool_choice: { type: "tool", name: opts.tool.name },
-    }, opts.timeoutMs ? { timeout: opts.timeoutMs } : undefined);
+    }, opts.timeoutMs != null || opts.maxRetries != null
+      ? {
+          ...(opts.timeoutMs != null ? { timeout: opts.timeoutMs } : {}),
+          ...(opts.maxRetries != null ? { maxRetries: opts.maxRetries } : {}),
+        }
+      : undefined);
 
     const block = resp.content.find((c) => c.type === "tool_use");
     if (!block || block.type !== "tool_use") {
