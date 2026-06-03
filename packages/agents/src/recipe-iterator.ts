@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PROMPT_VERSION = "recipe_iterator@2026-05-14-001";
+export const PROMPT_VERSION = "recipe_iterator@2026-06-03-rules";
 
 export const SYSTEM_PROMPT = `You are the Real Food Win Recipe Iterator.
 

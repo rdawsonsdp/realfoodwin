@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PROMPT_VERSION = "swap_generator@2026-05-29-001";
+export const PROMPT_VERSION = "swap_generator@2026-06-03-rules";
 
 // Visual-marker taxonomy. The agent emits ZERO OR MORE keys from each list
 // for every swap. The UI turns each key into an emoji-labeled pill so the

@@ -3,6 +3,7 @@ import {
   RecipeIterator,
   QuizSummary,
   RecipeBuilder,
+  composeSystemPrompt,
 } from "@realfoodwin/agents";
 import {
   callWithTool,
@@ -259,9 +260,10 @@ export interface SwapTrace {
     | "library_miss_web_fallback"
     | "image_route"
     | "image_identified_library_hit"
-    | "product_only_no_match";
+    | "product_only_no_match"
+    | "whole_food_passthrough";
   classification_confidence: number | null;
-  source_chosen: "cache" | "library" | "llm" | "web" | "not_found";
+  source_chosen: "cache" | "library" | "llm" | "web" | "not_found" | "whole_food";
   source_reasoning: string | null;
   db_match_found: boolean;
   library_recipe_id: string | null;
@@ -303,6 +305,129 @@ export interface SwapTrace {
 // "from the Real Food Win library" line so the response shape stays valid
 // without inventing data. The UI can show extra detail when it exists; the
 // library hit is the curated content, that's the value.
+// Whole foods that don't need swapping. Singulars only (we strip a trailing
+// 's' before matching so "apples" and "apple" both hit). Categories help the
+// trace row tell at a glance which group was matched.
+const WHOLE_FOOD_REGISTRY: Array<{
+  category: string;
+  canonical: string;
+  aliases: string[];
+}> = [
+  { category: "fruit",  canonical: "Apples",      aliases: ["apple"] },
+  { category: "fruit",  canonical: "Bananas",     aliases: ["banana"] },
+  { category: "fruit",  canonical: "Oranges",     aliases: ["orange"] },
+  { category: "fruit",  canonical: "Pears",       aliases: ["pear"] },
+  { category: "fruit",  canonical: "Peaches",     aliases: ["peach"] },
+  { category: "fruit",  canonical: "Plums",       aliases: ["plum"] },
+  { category: "fruit",  canonical: "Cherries",    aliases: ["cherry"] },
+  { category: "fruit",  canonical: "Grapes",      aliases: ["grape"] },
+  { category: "fruit",  canonical: "Strawberries",aliases: ["strawberry"] },
+  { category: "fruit",  canonical: "Blueberries", aliases: ["blueberry"] },
+  { category: "fruit",  canonical: "Raspberries", aliases: ["raspberry"] },
+  { category: "fruit",  canonical: "Blackberries",aliases: ["blackberry"] },
+  { category: "fruit",  canonical: "Pineapple",   aliases: ["pineapple"] },
+  { category: "fruit",  canonical: "Mangoes",     aliases: ["mango"] },
+  { category: "fruit",  canonical: "Watermelon",  aliases: ["watermelon"] },
+  { category: "fruit",  canonical: "Cantaloupe",  aliases: ["cantaloupe", "melon"] },
+  { category: "fruit",  canonical: "Avocado",     aliases: ["avocado"] },
+  { category: "fruit",  canonical: "Lemons",      aliases: ["lemon"] },
+  { category: "fruit",  canonical: "Limes",       aliases: ["lime"] },
+  { category: "fruit",  canonical: "Figs",        aliases: ["fig"] },
+  { category: "fruit",  canonical: "Medjool dates", aliases: ["date", "dates", "medjool date"] },
+  { category: "veg",    canonical: "Broccoli",    aliases: ["broccoli"] },
+  { category: "veg",    canonical: "Cauliflower", aliases: ["cauliflower"] },
+  { category: "veg",    canonical: "Carrots",     aliases: ["carrot"] },
+  { category: "veg",    canonical: "Celery",      aliases: ["celery"] },
+  { category: "veg",    canonical: "Spinach",     aliases: ["spinach"] },
+  { category: "veg",    canonical: "Kale",        aliases: ["kale"] },
+  { category: "veg",    canonical: "Arugula",     aliases: ["arugula"] },
+  { category: "veg",    canonical: "Romaine lettuce", aliases: ["lettuce", "romaine"] },
+  { category: "veg",    canonical: "Cucumbers",   aliases: ["cucumber"] },
+  { category: "veg",    canonical: "Bell peppers", aliases: ["bell pepper", "pepper"] },
+  { category: "veg",    canonical: "Tomatoes",    aliases: ["tomato"] },
+  { category: "veg",    canonical: "Onions",      aliases: ["onion"] },
+  { category: "veg",    canonical: "Garlic",      aliases: ["garlic"] },
+  { category: "veg",    canonical: "Zucchini",    aliases: ["zucchini"] },
+  { category: "veg",    canonical: "Eggplant",    aliases: ["eggplant"] },
+  { category: "veg",    canonical: "Asparagus",   aliases: ["asparagus"] },
+  { category: "veg",    canonical: "Brussels sprouts", aliases: ["brussels sprout", "brussel sprout"] },
+  { category: "veg",    canonical: "Cabbage",     aliases: ["cabbage"] },
+  { category: "veg",    canonical: "Sweet potatoes", aliases: ["sweet potato", "yam"] },
+  { category: "veg",    canonical: "Potatoes",    aliases: ["potato"] },
+  { category: "veg",    canonical: "Mushrooms",   aliases: ["mushroom"] },
+  { category: "veg",    canonical: "Beets",       aliases: ["beet"] },
+  { category: "veg",    canonical: "Radishes",    aliases: ["radish"] },
+  { category: "veg",    canonical: "Squash",      aliases: ["squash", "butternut", "acorn squash"] },
+  { category: "veg",    canonical: "Corn",        aliases: ["corn"] },
+  { category: "veg",    canonical: "Peas",        aliases: ["pea"] },
+  { category: "veg",    canonical: "Green beans", aliases: ["green bean", "string bean"] },
+  { category: "protein",canonical: "Eggs",        aliases: ["egg"] },
+  { category: "protein",canonical: "Chicken",     aliases: ["chicken"] },
+  { category: "protein",canonical: "Turkey",      aliases: ["turkey"] },
+  { category: "protein",canonical: "Beef",        aliases: ["beef", "steak", "ground beef"] },
+  { category: "protein",canonical: "Pork",        aliases: ["pork"] },
+  { category: "protein",canonical: "Lamb",        aliases: ["lamb"] },
+  { category: "protein",canonical: "Bison",       aliases: ["bison"] },
+  { category: "protein",canonical: "Salmon",      aliases: ["salmon"] },
+  { category: "protein",canonical: "Tuna",        aliases: ["tuna"] },
+  { category: "protein",canonical: "Cod",         aliases: ["cod"] },
+  { category: "protein",canonical: "Halibut",     aliases: ["halibut"] },
+  { category: "protein",canonical: "Sardines",    aliases: ["sardine"] },
+  { category: "protein",canonical: "Shrimp",      aliases: ["shrimp"] },
+  { category: "nuts",   canonical: "Almonds",     aliases: ["almond"] },
+  { category: "nuts",   canonical: "Walnuts",     aliases: ["walnut"] },
+  { category: "nuts",   canonical: "Pecans",      aliases: ["pecan"] },
+  { category: "nuts",   canonical: "Cashews",     aliases: ["cashew"] },
+  { category: "nuts",   canonical: "Pistachios",  aliases: ["pistachio"] },
+  { category: "nuts",   canonical: "Hazelnuts",   aliases: ["hazelnut"] },
+  { category: "nuts",   canonical: "Macadamia nuts", aliases: ["macadamia"] },
+  { category: "nuts",   canonical: "Brazil nuts", aliases: ["brazil nut"] },
+  { category: "nuts",   canonical: "Pine nuts",   aliases: ["pine nut"] },
+  { category: "nuts",   canonical: "Pumpkin seeds", aliases: ["pumpkin seed", "pepita"] },
+  { category: "nuts",   canonical: "Sunflower seeds", aliases: ["sunflower seed"] },
+  { category: "nuts",   canonical: "Chia seeds",  aliases: ["chia"] },
+  { category: "nuts",   canonical: "Flax seeds",  aliases: ["flax", "flax seed", "flaxseed"] },
+  { category: "nuts",   canonical: "Hemp seeds",  aliases: ["hemp seed", "hemp"] },
+  { category: "grain",  canonical: "Quinoa",      aliases: ["quinoa"] },
+  { category: "grain",  canonical: "Brown rice",  aliases: ["brown rice", "rice"] },
+  { category: "grain",  canonical: "Oats",        aliases: ["oat", "oatmeal", "rolled oats"] },
+  { category: "grain",  canonical: "Buckwheat",   aliases: ["buckwheat"] },
+  { category: "grain",  canonical: "Millet",      aliases: ["millet"] },
+  { category: "legume", canonical: "Lentils",     aliases: ["lentil"] },
+  { category: "legume", canonical: "Chickpeas",   aliases: ["chickpea", "garbanzo"] },
+  { category: "legume", canonical: "Black beans", aliases: ["black bean"] },
+  { category: "legume", canonical: "Kidney beans",aliases: ["kidney bean"] },
+  { category: "legume", canonical: "Pinto beans", aliases: ["pinto bean"] },
+  { category: "legume", canonical: "Navy beans",  aliases: ["navy bean"] },
+  { category: "fat",    canonical: "Olive oil",   aliases: ["olive oil", "extra virgin olive oil"] },
+  { category: "fat",    canonical: "Avocado oil", aliases: ["avocado oil"] },
+  { category: "fat",    canonical: "Coconut oil", aliases: ["coconut oil"] },
+  { category: "fat",    canonical: "Grass-fed butter", aliases: ["butter", "grass fed butter", "ghee"] },
+  { category: "sweet",  canonical: "Raw honey",   aliases: ["honey", "raw honey"] },
+  { category: "herb",   canonical: "Fresh basil", aliases: ["basil"] },
+  { category: "herb",   canonical: "Fresh parsley", aliases: ["parsley"] },
+  { category: "herb",   canonical: "Fresh cilantro", aliases: ["cilantro"] },
+  { category: "herb",   canonical: "Fresh mint",  aliases: ["mint"] },
+  { category: "herb",   canonical: "Fresh rosemary", aliases: ["rosemary"] },
+  { category: "herb",   canonical: "Fresh thyme", aliases: ["thyme"] },
+  { category: "herb",   canonical: "Fresh dill",  aliases: ["dill"] },
+];
+
+function matchWholeFood(rawQuery: string): { canonical: string; category: string } | null {
+  const q = rawQuery.trim().toLowerCase();
+  if (q.length < 2 || q.length > 32) return null;
+  // Strip a trailing 's' for naive plural → singular.
+  const stripped = q.endsWith("s") ? q.slice(0, -1) : q;
+  for (const entry of WHOLE_FOOD_REGISTRY) {
+    for (const alias of entry.aliases) {
+      if (alias === q || alias === stripped) {
+        return { canonical: entry.canonical, category: entry.category };
+      }
+    }
+  }
+  return null;
+}
+
 function buildSwapOutputFromLibrary(
   recipe: MatchedRecipe | null,
   products: MatchedProduct[],
@@ -401,7 +526,7 @@ function formatPreferences(p: SwapPreferencesInput | null | undefined): string {
 // Debug payload surfaced from the swap pipeline so the UI can show why/how the
 // agent picked this swap. Temporary observability — remove once we're confident.
 export interface SwapDebug {
-  source: "library" | "llm" | "cache";
+  source: "library" | "llm" | "cache" | "whole_food";
   model: string | null;
   prompt_version: string | null;
   request: string;
@@ -669,6 +794,97 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
     }
   }
 
+  // Whole-food shortcut: if the query is a single recognizable whole food
+  // ("apples", "broccoli", "salmon", "eggs"), there's nothing to swap — it
+  // already IS real food. Return an instant "already real food" response so
+  // we don't burn 20+ seconds and a Sonnet call telling the user that apples
+  // are good.
+  if (!input.image && input.request.trim().length >= 2) {
+    const wholeFoodHit = matchWholeFood(input.request);
+    if (wholeFoodHit) {
+      const output: SwapGenerator.SwapGeneratorOutput = {
+        title: wholeFoodHit.canonical,
+        tagline: "Already a real food — no swap needed.",
+        recipe: { ingredients: [], steps: [], time_min: 0 },
+        narrative:
+          `${wholeFoodHit.canonical} is a whole food on its own — there's nothing ultra-processed to swap. Eat it as-is, or use it in a recipe. If you want recipe ideas that use ${wholeFoodHit.canonical.toLowerCase()}, try a more specific search like "${wholeFoodHit.canonical.toLowerCase()} dessert" or "${wholeFoodHit.canonical.toLowerCase()} snack".`,
+        tuned_for_you_reasons: [
+          "This is a whole, unprocessed food — Real Food Win has nothing to improve here.",
+          "No additives, no ultra-processing, nothing to swap.",
+        ],
+        bad_markers: [],
+        good_markers: ["whole_food"],
+        alternates: [],
+      };
+      let saved = null;
+      if (input.userId) {
+        saved = await cacheSwap({
+          user_id: input.userId,
+          product_id: input.productId ?? null,
+          recipe: output.recipe,
+          nutrition: {},
+          narrative: output.narrative,
+          output,
+          swap_target: input.request,
+        });
+      }
+      const debug: SwapDebug = {
+        source: "whole_food",
+        model: null,
+        prompt_version: null,
+        request: input.request,
+        merged_preferences: input.preferences ?? null,
+        avoid_titles: input.avoidTitles ?? null,
+        feedback: input.feedback ?? null,
+        user_context: null,
+        user_prompt: null,
+      };
+      const trace: SwapTrace = {
+        request_id: requestId,
+        classification_reasoning: "whole_food_passthrough",
+        classification_confidence: 1.0,
+        source_chosen: "whole_food",
+        source_reasoning: `Recognized "${input.request.trim()}" as a single whole food.`,
+        db_match_found: false,
+        library_recipe_id: null,
+        library_product_ids: [],
+        category_implicit: wholeFoodHit.category,
+        recommendations: [],
+        latency_cache_ms: null,
+        latency_embed_ms: null,
+        latency_pgvector_ms: null,
+        latency_judge_ms: null,
+        latency_llm_ms: null,
+        latency_web_ms: null,
+        latency_image_id_ms: null,
+        latency_total_ms: Date.now() - overallStart,
+        tokens_input: null,
+        tokens_output: null,
+        cost_usd: null,
+        web_searches: [],
+        web_urls_fetched: [],
+        library_written: false,
+        library_written_product_id: null,
+        merged_preferences: input.preferences ?? null,
+        avoid_titles: input.avoidTitles ?? null,
+        feedback: input.feedback ?? null,
+        user_context: null,
+        user_prompt: null,
+        model: null,
+        prompt_version: null,
+      };
+      return {
+        cached: false,
+        swap: saved,
+        output,
+        latencyMs: Date.now() - overallStart,
+        source: "whole_food" as const,
+        debug,
+        trace,
+      };
+    }
+  }
+
   // Library-first matcher (text path). Photo swaps that reach here have
   // already failed Stage A/B above. Every text query gets a sub-2s curated
   // lookup before falling through to a fresh LLM generation. When the user
@@ -738,7 +954,8 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
         const result = await callWithToolAndWebSearch({
           tier: "sonnet",
           system:
-            SwapGenerator.SYSTEM_PROMPT + buildWebSearchPromptSuffix(authorizedHostnames),
+            composeSystemPrompt(SwapGenerator.SYSTEM_PROMPT) +
+            buildWebSearchPromptSuffix(authorizedHostnames),
           user: userPrompt,
           tool: SwapGenerator.TOOL,
           heliconeUserId: input.userId ?? "anonymous",
@@ -762,7 +979,7 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
         );
         const result = await callWithTool({
           tier: "sonnet",
-          system: SwapGenerator.SYSTEM_PROMPT,
+          system: composeSystemPrompt(SwapGenerator.SYSTEM_PROMPT),
           user: userPrompt,
           tool: SwapGenerator.TOOL,
           heliconeUserId: input.userId ?? "anonymous",
@@ -774,7 +991,7 @@ export async function runSwapGenerator(input: SwapGeneratorRunInput) {
     } else {
       const result = await callWithTool({
         tier: "sonnet",
-        system: SwapGenerator.SYSTEM_PROMPT,
+        system: composeSystemPrompt(SwapGenerator.SYSTEM_PROMPT),
         user: userPrompt,
         tool: SwapGenerator.TOOL,
         image: input.image,
@@ -941,7 +1158,7 @@ export async function runRecipeIterator(input: RecipeIteratorRunInput) {
   try {
     const result = await callWithTool({
       tier: "sonnet",
-      system: RecipeIterator.SYSTEM_PROMPT,
+      system: composeSystemPrompt(RecipeIterator.SYSTEM_PROMPT),
       user: userPrompt,
       tool: RecipeIterator.TOOL,
       heliconeUserId: input.userId ?? "anonymous",
@@ -1057,7 +1274,7 @@ export async function runRecipeBuilder(input: RecipeBuilderRunInput) {
   try {
     const result = await callWithTool({
       tier: "sonnet",
-      system: RecipeBuilder.SYSTEM_PROMPT,
+      system: composeSystemPrompt(RecipeBuilder.SYSTEM_PROMPT),
       user: userPrompt,
       tool: RecipeBuilder.TOOL,
       images: input.images,

@@ -17,6 +17,7 @@ loadEnv({ path: "apps/web/.env.local" });
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { callWithTool, type ToolDefinition } from "@realfoodwin/gateway";
+import { composeSystemPrompt } from "@realfoodwin/agents";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -29,22 +30,13 @@ const admin: SupabaseClient = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-const SYSTEM = `You are a real-food recipe author for Real Food Win.
+const SYSTEM = composeSystemPrompt(`You are a real-food recipe author for Real Food Win.
 
 You are given a recipe TITLE and a short DESCRIPTION. Produce the full
 ingredient list and cooking steps for that dish, staying faithful to the
 description.
 
-Hard rules:
-- Whole-food ingredients only. No seed oils (canola, soybean, sunflower,
-  vegetable, "vegetable oil blend", margarine). Allowed fats: olive oil,
-  avocado oil, coconut oil, butter, ghee, animal tallow.
-- No "natural flavors", no maltodextrin, no artificial sweeteners.
-- Sweeteners must be honey, maple syrup, or dates unless the title says
-  otherwise.
-- Keep the ingredient list short and recognizable (8-15 items typical).
-- Steps are concise and home-kitchen friendly (5-9 steps typical).
-- Respect prep time hints in the description.`;
+Respect prep time hints in the description.`);
 
 const TOOL: ToolDefinition = {
   name: "emit_recipe_body",
